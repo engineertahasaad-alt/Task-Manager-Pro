@@ -136,12 +136,10 @@ export default function NewTask() {
                   )} />
                 </div>
 
-                <FormItem>
-                  <FormLabel>Attachment (optional)</FormLabel>
-                  <FormControl>
-                    <Input type="file" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
-                  </FormControl>
-                </FormItem>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium leading-none">Attachment (optional)</label>
+                  <Input type="file" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+                </div>
 
                 <div className="flex justify-end gap-2 pt-4">
                   <Button type="button" variant="outline" onClick={() => setLocation("/tasks")}>Cancel</Button>
