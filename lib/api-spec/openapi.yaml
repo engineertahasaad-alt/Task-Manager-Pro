@@ -60,6 +60,27 @@ paths:
         "409":
           description: Mobile number already registered
 
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Reset password using mobile number (no email/SMS required for internal team app)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordInput"
+      responses:
+        "200":
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Mobile number not found
+
   /auth/login:
     post:
       operationId: login
@@ -595,6 +616,15 @@ components:
         mobile:
           type: string
         password:
+          type: string
+
+    ForgotPasswordInput:
+      type: object
+      required: [mobile, newPassword]
+      properties:
+        mobile:
+          type: string
+        newPassword:
           type: string
 
     LoginInput:

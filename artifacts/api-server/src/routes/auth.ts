@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { LoginBody, ChangePasswordBody, SignupBody } from "@workspace/api-zod";
+import { LoginBody, ChangePasswordBody, SignupBody, ForgotPasswordBody } from "@workspace/api-zod";
 import { signToken, requireAuth } from "../middlewares/auth";
 
 const router = Router();
@@ -18,6 +18,23 @@ function serializeUser(user: typeof usersTable.$inferSelect) {
     createdAt: user.createdAt.toISOString(),
   };
 }
+
+router.post("/auth/forgot-password", async (req, res): Promise<void> => {
+  const parsed = ForgotPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const { mobile, newPassword } = parsed.data;
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.mobile, mobile));
+  if (!user) {
+    res.status(404).json({ error: "No account found with that mobile number" });
+    return;
+  }
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await db.update(usersTable).set({ passwordHash, mustChangePassword: false }).where(eq(usersTable.id, user.id));
+  res.json({ message: "Password reset successfully. You can now sign in with your new password." });
+});
 
 router.post("/auth/signup", async (req, res): Promise<void> => {
   const parsed = SignupBody.safeParse(req.body);

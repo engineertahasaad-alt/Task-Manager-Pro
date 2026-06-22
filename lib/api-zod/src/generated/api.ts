@@ -27,6 +27,19 @@ export const SignupBody = zod.object({
 
 
 /**
+ * @summary Reset password using mobile number (no email/SMS required for internal team app)
+ */
+export const ForgotPasswordBody = zod.object({
+  "mobile": zod.string(),
+  "newPassword": zod.string()
+})
+
+export const ForgotPasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Login with mobile number and password
  */
 export const LoginBody = zod.object({

@@ -86,12 +86,17 @@ export default function Login() {
               <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
                 {loginMutation.isPending ? "Signing in..." : "Sign in"}
               </Button>
-              <p className="text-center text-sm text-muted-foreground">
-                Don't have an account?{" "}
-                <Link href="/signup" className="text-primary hover:underline font-medium">
-                  Sign up
+              <div className="flex flex-col gap-1 items-center text-sm text-muted-foreground">
+                <Link href="/forgot-password" className="text-primary hover:underline font-medium">
+                  Forgot password?
                 </Link>
-              </p>
+                <span>
+                  Don't have an account?{" "}
+                  <Link href="/signup" className="text-primary hover:underline font-medium">
+                    Sign up
+                  </Link>
+                </span>
+              </div>
             </form>
           </Form>
         </CardContent>

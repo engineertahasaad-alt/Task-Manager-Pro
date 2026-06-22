@@ -11,6 +11,7 @@ export * from './authResponse';
 export * from './changePasswordInput';
 export * from './dashboardSummary';
 export * from './employeeWorkload';
+export * from './forgotPasswordInput';
 export * from './getDailyReportParams';
 export * from './getDashboardSummaryDateFilter';
 export * from './getDashboardSummaryParams';

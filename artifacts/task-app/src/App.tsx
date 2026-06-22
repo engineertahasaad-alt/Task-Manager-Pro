@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
+import ForgotPassword from "@/pages/forgot-password";
 import Dashboard from "@/pages/dashboard";
 import ChangePassword from "@/pages/change-password";
 import Tasks from "@/pages/tasks/index";
@@ -37,6 +38,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/change-password"><PrivateRoute component={ChangePassword} /></Route>
       <Route path="/dashboard"><PrivateRoute component={Dashboard} /></Route>
       

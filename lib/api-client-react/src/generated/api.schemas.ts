@@ -19,6 +19,11 @@ export interface SignupInput {
   password: string;
 }
 
+export interface ForgotPasswordInput {
+  mobile: string;
+  newPassword: string;
+}
+
 export interface LoginInput {
   mobile: string;
   password: string;
