@@ -26,7 +26,16 @@ app.use(
   }),
 );
 app.use(cors());
-app.use(express.json());
+// Note: multer handles multipart/form-data — do NOT use express.json() before multer routes
+// express.json() and urlencoded only apply to non-multipart requests
+app.use((req, _res, next) => {
+  const contentType = req.headers["content-type"] ?? "";
+  if (!contentType.includes("multipart/form-data")) {
+    express.json()(req, _res, next);
+  } else {
+    next();
+  }
+});
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);

@@ -1,0 +1,308 @@
+Build a complete production-ready Task Management Web Application (PWA) for small and medium teams.
+
+GENERAL IDEA
+
+This application is intended to replace task assignments done through WhatsApp and phone calls.
+
+The system must be extremely simple, fast, modern and mobile-friendly.
+
+No unnecessary fields or complex project-management features.
+
+The application must be fully functional and ready for real business use.
+
+---
+
+USER ROLES
+
+1. Owner (Manager)
+
+2. Deputy Manager (Only one deputy per team)
+
+3. Team Member
+
+Owner creates the team.
+
+During team setup the Owner can assign one user as Deputy.
+
+Owner and Deputy have the same permissions except team ownership settings.
+
+---
+
+AUTHENTICATION
+
+Login using:
+
+* Mobile Number
+* Password
+
+Owner creates team members.
+
+New team members are created with default password:
+
+123
+
+At first login user must change password.
+
+Use secure authentication and JWT.
+
+---
+
+TEAM MANAGEMENT
+
+Owner can:
+
+* Create team members
+* Edit team members
+* Disable team members
+* Assign one Deputy
+
+Each user contains:
+
+* Full Name
+* Mobile Number
+* Role
+
+---
+
+TASK CREATION
+
+Creating a task must be very simple.
+
+Fields:
+
+* Task Title
+* Task Description
+* Assigned Employee
+* Deadline (Date & Time)
+* Attachments (Optional)
+
+Supported attachments:
+
+* Images
+* PDF
+* Excel
+* Word Documents
+
+No priority field.
+
+No category field.
+
+No complex project-management fields.
+
+Owner and Deputy can create tasks.
+
+---
+
+TASK STATUS
+
+Status Flow:
+
+Open
+
+↓
+
+Completed (Employee marks task completed)
+
+↓
+
+Approved (Manager or Deputy approves)
+
+OR
+
+↓
+
+Reopened (Manager or Deputy reopens task)
+
+---
+
+TASK DETAILS PAGE
+
+Show:
+
+* Title
+* Description
+* Deadline
+* Creator
+* Assigned Employee
+* Attachments
+* Status
+
+Actions for employee:
+
+* Open Chat
+* Mark Completed
+
+Actions for manager/deputy:
+
+* Open Chat
+* Approve
+* Reopen
+
+---
+
+TASK CHAT
+
+Every task has its own dedicated chat.
+
+Chat behaves similarly to WhatsApp conversation.
+
+Messages are linked to that task only.
+
+Support:
+
+* Text messages
+* Image attachments
+* File attachments
+
+Show:
+
+* Sender
+* Time
+* Message
+
+Real-time updates preferred.
+
+---
+
+NOTIFICATIONS
+
+Send notifications when:
+
+1. New task assigned
+
+2. Deadline approaching
+
+24 hours before
+
+3 hours before
+
+1 hour before
+
+3. Task completed
+
+4. Task approved
+
+5. Task reopened
+
+Notifications should work on mobile and desktop.
+
+---
+
+MANAGER DASHBOARD
+
+Default filter = Today
+
+Dashboard Cards:
+
+* Total Tasks
+* Open Tasks
+* Completed Waiting Approval
+* Approved Tasks
+* Overdue Tasks
+
+Filters:
+
+* Today
+* This Week
+* This Month
+* Custom Date Range
+
+Additional Filters:
+
+* Employee
+* Status
+
+Show workload by employee.
+
+Show task counts.
+
+---
+
+EMPLOYEE DASHBOARD
+
+Show:
+
+* Today's Tasks
+* Upcoming Tasks
+* Overdue Tasks
+
+Task list should be sorted by nearest deadline.
+
+Clicking a task opens task details page.
+
+---
+
+REPORTS
+
+Generate PDF Reports.
+
+1. Daily Report
+
+2. Employee Report
+
+Include:
+
+* Total Tasks
+* Completed Tasks
+* Approved Tasks
+* Overdue Tasks
+
+Allow PDF export.
+
+---
+
+TECHNICAL REQUIREMENTS
+
+Frontend:
+
+* React
+* TypeScript
+* Tailwind CSS
+* Modern UI
+
+Backend:
+
+* Node.js
+* Express
+
+Database:
+
+* PostgreSQL
+
+Authentication:
+
+* JWT
+
+File Storage:
+
+* Local storage for now
+
+Notifications:
+
+* Browser Push Notifications
+
+App Type:
+
+* Progressive Web App (PWA)
+
+Responsive for:
+
+* Desktop
+* Tablet
+* Mobile
+
+---
+
+IMPORTANT
+
+Keep the UI extremely simple.
+
+Focus on usability and speed.
+
+Avoid unnecessary enterprise complexity.
+
+The application should feel like a combination of:
+
+Task Management + WhatsApp-style communication.
+
+Generate clean architecture, organized folder structure, reusable components, proper database schema, API routes, and production-ready code.

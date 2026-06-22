@@ -1,20 +1,22 @@
-# [Project name]
+# TaskFlow
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A team task management PWA that replaces WhatsApp/phone-call task assignments for small and medium teams.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
+- `pnpm --filter @workspace/task-app run dev` — run the frontend (port 23220)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET` — JWT secret
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
+- Frontend: React + Vite, Tailwind CSS, shadcn/ui, wouter routing, TanStack Query
+- API: Express 5, JWT auth (jsonwebtoken + bcryptjs), multer for file uploads
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
@@ -22,15 +24,29 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — OpenAPI spec (source of truth)
+- `lib/db/src/schema/` — Drizzle table definitions (users, tasks, attachments, messages, notifications)
+- `artifacts/api-server/src/routes/` — Express route handlers (auth, users, tasks, attachments, messages, notifications, dashboard, reports)
+- `artifacts/api-server/src/middlewares/auth.ts` — JWT auth middleware + role helpers
+- `artifacts/api-server/uploads/` — Uploaded file storage (local)
+- `artifacts/task-app/src/` — React frontend (pages, components)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- JWT stored in localStorage under key `taskflow_token`; sent as `Authorization: Bearer <token>` header
+- File uploads handled via multer directly (not in OpenAPI codegen — multipart/form-data breaks Orval's Node.js type generation)
+- Task status flow: open → completed (by member) → approved (by manager/deputy) or reopened
+- Notifications are created server-side on task state changes (assigned, completed, approved, reopened)
+- Dashboard summary and workload computed on-the-fly from DB queries (no materialized views needed at this scale)
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Login with mobile number + password; first-login forced password change
+- Three roles: Owner, Deputy (one per team), Member
+- Simple task creation: title, description, assignee, deadline, optional attachments
+- WhatsApp-style per-task chat with 3-second auto-polling
+- Manager dashboard with stat cards and employee workload; Employee dashboard with today/upcoming/overdue
+- PDF reports via browser print (daily and employee reports)
 
 ## User preferences
 
@@ -38,7 +54,10 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Default password for new team members is `123` — they must change it on first login
+- Seed owner credentials: mobile `0501234567`, password `owner123`
+- All other seeded users: mobile is their number, password is `123` (must change on first login)
+- `pnpm --filter @workspace/db run push-force` if schema push fails with column conflicts
 
 ## Pointers
 
