@@ -53,7 +53,7 @@ router.get("/dashboard/summary", requireRole("owner", "deputy"), async (req, res
 
   const total = allTasks.length;
   const open = allTasks.filter((t) => t.status === "open" || t.status === "reopened").length;
-  const completed = allTasks.filter((t) => t.status === "completed").length;
+  const completed = allTasks.filter((t) => t.status === "completed" || t.status === "approved").length;
   const approved = allTasks.filter((t) => t.status === "approved").length;
   const overdue = allTasks.filter(
     (t) => t.deadline < now && t.status !== "approved"

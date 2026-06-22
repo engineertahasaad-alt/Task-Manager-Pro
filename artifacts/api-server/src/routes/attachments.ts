@@ -44,9 +44,8 @@ const upload = multer({
 });
 
 const router = Router();
-router.use(requireAuth);
 
-router.post("/tasks/:id/attachments", upload.single("file"), async (req, res): Promise<void> => {
+router.post("/tasks/:id/attachments", requireAuth, upload.single("file"), async (req, res): Promise<void> => {
   const taskId = parseInt(req.params.id as string, 10);
   if (isNaN(taskId)) {
     res.status(400).json({ error: "Invalid task ID" });
