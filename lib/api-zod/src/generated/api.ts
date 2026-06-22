@@ -17,6 +17,16 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Register a new account with mobile number and password
+ */
+export const SignupBody = zod.object({
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "password": zod.string()
+})
+
+
+/**
  * @summary Login with mobile number and password
  */
 export const LoginBody = zod.object({

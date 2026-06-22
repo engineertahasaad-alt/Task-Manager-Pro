@@ -6,6 +6,7 @@ import { useGetMe } from "@workspace/api-client-react";
 import NotFound from "@/pages/not-found";
 
 import Login from "@/pages/login";
+import Signup from "@/pages/signup";
 import Dashboard from "@/pages/dashboard";
 import ChangePassword from "@/pages/change-password";
 import Tasks from "@/pages/tasks/index";
@@ -35,6 +36,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
       <Route path="/change-password"><PrivateRoute component={ChangePassword} /></Route>
       <Route path="/dashboard"><PrivateRoute component={Dashboard} /></Route>
       

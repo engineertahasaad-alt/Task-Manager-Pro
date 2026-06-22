@@ -3,41 +3,39 @@ import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useLogin } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSignup } from "@workspace/api-client-react";
 
-const loginSchema = z.object({
+const signupSchema = z.object({
+  fullName: z.string().min(2, "Full name must be at least 2 characters"),
   mobile: z.string().min(1, "Mobile number is required"),
-  password: z.string().min(1, "Password is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-export default function Login() {
+export default function Signup() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const loginMutation = useLogin();
+  const signupMutation = useSignup();
 
-  const form = useForm<z.infer<typeof loginSchema>>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { mobile: "", password: "" },
+  const form = useForm<z.infer<typeof signupSchema>>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { fullName: "", mobile: "", password: "" },
   });
 
-  const onSubmit = (values: z.infer<typeof loginSchema>) => {
-    loginMutation.mutate({ data: values }, {
+  const onSubmit = (values: z.infer<typeof signupSchema>) => {
+    signupMutation.mutate({ data: values }, {
       onSuccess: (res) => {
         localStorage.setItem("taskflow_token", res.token);
-        if (res.user.mustChangePassword) {
-          setLocation("/change-password");
-        } else {
-          setLocation("/dashboard");
-        }
+        setLocation("/dashboard");
       },
-      onError: () => {
-        toast({ title: "Login failed", description: "Invalid credentials.", variant: "destructive" });
+      onError: (err: any) => {
+        const message = err?.response?.data?.error ?? "Could not create account.";
+        toast({ title: "Signup failed", description: message, variant: "destructive" });
       }
     });
   };
@@ -51,12 +49,25 @@ export default function Login() {
               <CheckSquare className="h-6 w-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Welcome to TaskFlow</CardTitle>
-          <CardDescription>Enter your details to sign in to your account</CardDescription>
+          <CardTitle className="text-2xl font-bold tracking-tight">Create an account</CardTitle>
+          <CardDescription>Sign up to get started with TaskFlow</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="fullName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter your full name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="mobile"
@@ -77,19 +88,19 @@ export default function Login() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="Enter your password" {...field} />
+                      <Input type="password" placeholder="Choose a password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-                {loginMutation.isPending ? "Signing in..." : "Sign in"}
+              <Button type="submit" className="w-full" disabled={signupMutation.isPending}>
+                {signupMutation.isPending ? "Creating account..." : "Sign up"}
               </Button>
               <p className="text-center text-sm text-muted-foreground">
-                Don't have an account?{" "}
-                <Link href="/signup" className="text-primary hover:underline font-medium">
-                  Sign up
+                Already have an account?{" "}
+                <Link href="/login" className="text-primary hover:underline font-medium">
+                  Sign in
                 </Link>
               </p>
             </form>

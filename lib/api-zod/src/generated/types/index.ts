@@ -29,6 +29,7 @@ export * from './myTasksSummary';
 export * from './notification';
 export * from './notificationType';
 export * from './reportData';
+export * from './signupInput';
 export * from './task';
 export * from './taskInput';
 export * from './taskStatus';

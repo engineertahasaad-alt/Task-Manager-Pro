@@ -13,6 +13,12 @@ export interface MessageResponse {
   message: string;
 }
 
+export interface SignupInput {
+  fullName: string;
+  mobile: string;
+  password: string;
+}
+
 export interface LoginInput {
   mobile: string;
   password: string;
