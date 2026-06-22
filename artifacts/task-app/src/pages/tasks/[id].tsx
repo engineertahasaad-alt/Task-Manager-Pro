@@ -51,7 +51,7 @@ export default function TaskDetail() {
     e.preventDefault();
     if (!messageContent.trim()) return;
 
-    sendMessageMutation.mutate({ data: { content: messageContent } }, {
+    sendMessageMutation.mutate({ id: taskId, data: { content: messageContent } }, {
       onSuccess: () => {
         setMessageContent("");
         queryClient.invalidateQueries({ queryKey: getListMessagesQueryKey(taskId) });

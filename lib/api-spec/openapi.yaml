@@ -208,6 +208,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
 
+  /users/{id}/reset-password:
+    post:
+      operationId: resetUserPassword
+      tags: [users]
+      summary: Admin resets a team member's password (owner/deputy only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetUserPasswordInput"
+      responses:
+        "200":
+          description: Password reset
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
   /users/{id}/disable:
     patch:
       operationId: disableUser
@@ -672,6 +697,13 @@ components:
         mustChangePassword:
           type: boolean
         createdAt:
+          type: string
+
+    ResetUserPasswordInput:
+      type: object
+      required: [newPassword]
+      properties:
+        newPassword:
           type: string
 
     UserInput:

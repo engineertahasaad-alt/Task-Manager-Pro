@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { CreateUserBody, UpdateUserBody, GetUserParams, UpdateUserParams, DisableUserParams } from "@workspace/api-zod";
+import { CreateUserBody, UpdateUserBody, GetUserParams, UpdateUserParams, DisableUserParams, ResetUserPasswordBody, ResetUserPasswordParams } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeUser } from "./auth";
 
@@ -84,6 +84,27 @@ router.patch("/users/:id", requireRole("owner", "deputy"), async (req, res): Pro
     return;
   }
   res.json(serializeUser(user));
+});
+
+router.post("/users/:id/reset-password", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+  const params = ResetUserPasswordParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const parsed = ResetUserPasswordBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, params.data.id));
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  const passwordHash = await bcrypt.hash(parsed.data.newPassword, 10);
+  await db.update(usersTable).set({ passwordHash, mustChangePassword: true }).where(eq(usersTable.id, user.id));
+  res.json({ message: "Password reset. User must change password on next login." });
 });
 
 router.patch("/users/:id/disable", requireRole("owner", "deputy"), async (req, res): Promise<void> => {

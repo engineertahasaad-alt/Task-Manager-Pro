@@ -58,6 +58,10 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface ResetUserPasswordInput {
+  newPassword: string;
+}
+
 export type UserInputRole = typeof UserInputRole[keyof typeof UserInputRole];
 
 

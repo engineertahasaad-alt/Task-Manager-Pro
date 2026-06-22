@@ -156,6 +156,22 @@ export const UpdateUserResponse = zod.object({
 
 
 /**
+ * @summary Admin resets a team member's password (owner/deputy only)
+ */
+export const ResetUserPasswordParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ResetUserPasswordBody = zod.object({
+  "newPassword": zod.string()
+})
+
+export const ResetUserPasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Disable a team member
  */
 export const DisableUserParams = zod.object({
