@@ -614,6 +614,127 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReportData"
 
+  /push/token:
+    post:
+      operationId: registerPushToken
+      tags: [notifications]
+      summary: Register a push token (Expo push token or Web Push subscription)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushTokenInput"
+      responses:
+        "200":
+          description: Token registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+    delete:
+      operationId: unregisterPushToken
+      tags: [notifications]
+      summary: Unregister a push token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushTokenDeleteInput"
+      responses:
+        "200":
+          description: Token removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/webauthn/register/options:
+    post:
+      operationId: getWebAuthnRegisterOptions
+      tags: [auth]
+      summary: Get WebAuthn registration options
+      responses:
+        "200":
+          description: Registration options
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /auth/webauthn/register/verify:
+    post:
+      operationId: verifyWebAuthnRegistration
+      tags: [auth]
+      summary: Verify WebAuthn registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebAuthnVerifyRegisterInput"
+      responses:
+        "200":
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/webauthn/login/options:
+    post:
+      operationId: getWebAuthnLoginOptions
+      tags: [auth]
+      summary: Get WebAuthn login challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebAuthnLoginOptionsInput"
+      responses:
+        "200":
+          description: Authentication options
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebAuthnOptionsResponse"
+
+  /auth/webauthn/login/verify:
+    post:
+      operationId: verifyWebAuthnLogin
+      tags: [auth]
+      summary: Verify WebAuthn login and return JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebAuthnVerifyLoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Authentication failed
+
+  /push/vapid-public-key:
+    get:
+      operationId: getVapidPublicKey
+      tags: [notifications]
+      summary: Get VAPID public key for web push
+      responses:
+        "200":
+          description: VAPID public key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VapidPublicKeyResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -934,3 +1055,60 @@ components:
             $ref: "#/components/schemas/Task"
         employeeName:
           type: ["string", "null"]
+
+    PushTokenInput:
+      type: object
+      required: [token, platform]
+      properties:
+        token:
+          type: string
+        platform:
+          type: string
+          enum: [expo, web]
+        webSubscription:
+          type: object
+          nullable: true
+
+    PushTokenDeleteInput:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+
+    WebAuthnLoginOptionsInput:
+      type: object
+      required: [mobile]
+      properties:
+        mobile:
+          type: string
+
+    WebAuthnVerifyRegisterInput:
+      type: object
+      required: [credential]
+      properties:
+        credential:
+          type: object
+
+    WebAuthnVerifyLoginInput:
+      type: object
+      required: [mobile, credential]
+      properties:
+        mobile:
+          type: string
+        credential:
+          type: object
+
+    WebAuthnOptionsResponse:
+      type: object
+      required: [challenge]
+      properties:
+        challenge:
+          type: string
+
+    VapidPublicKeyResponse:
+      type: object
+      required: [publicKey]
+      properties:
+        publicKey:
+          type: string

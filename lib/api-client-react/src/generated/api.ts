@@ -28,6 +28,7 @@ import type {
   GetDailyReportParams,
   GetDashboardSummaryParams,
   GetEmployeeReportParams,
+  GetWebAuthnRegisterOptions200,
   GetWorkloadByEmployeeParams,
   HealthStatus,
   ListTasksParams,
@@ -37,6 +38,8 @@ import type {
   MessageResponse,
   MyTasksSummary,
   Notification,
+  PushTokenDeleteInput,
+  PushTokenInput,
   ReportData,
   ResetUserPasswordInput,
   SignupInput,
@@ -45,7 +48,12 @@ import type {
   TaskUpdate,
   User,
   UserInput,
-  UserUpdate
+  UserUpdate,
+  VapidPublicKeyResponse,
+  WebAuthnLoginOptionsInput,
+  WebAuthnOptionsResponse,
+  WebAuthnVerifyLoginInput,
+  WebAuthnVerifyRegisterInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -2218,6 +2226,508 @@ export function useGetEmployeeReport<TData = Awaited<ReturnType<typeof getEmploy
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetEmployeeReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getRegisterPushTokenUrl = () => {
+
+
+
+
+  return `/api/push/token`
+}
+
+/**
+ * @summary Register a push token (Expo push token or Web Push subscription)
+ */
+export const registerPushToken = async (pushTokenInput: PushTokenInput, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getRegisterPushTokenUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      pushTokenInput,)
+  }
+);}
+
+
+
+
+export const getRegisterPushTokenMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerPushToken>>, TError,{data: BodyType<PushTokenInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registerPushToken>>, TError,{data: BodyType<PushTokenInput>}, TContext> => {
+
+const mutationKey = ['registerPushToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerPushToken>>, {data: BodyType<PushTokenInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  registerPushToken(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegisterPushTokenMutationResult = NonNullable<Awaited<ReturnType<typeof registerPushToken>>>
+    export type RegisterPushTokenMutationBody = BodyType<PushTokenInput>
+    export type RegisterPushTokenMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Register a push token (Expo push token or Web Push subscription)
+ */
+export const useRegisterPushToken = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerPushToken>>, TError,{data: BodyType<PushTokenInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof registerPushToken>>,
+        TError,
+        {data: BodyType<PushTokenInput>},
+        TContext
+      > => {
+      return useMutation(getRegisterPushTokenMutationOptions(options));
+    }
+
+export const getUnregisterPushTokenUrl = () => {
+
+
+
+
+  return `/api/push/token`
+}
+
+/**
+ * @summary Unregister a push token
+ */
+export const unregisterPushToken = async (pushTokenDeleteInput: PushTokenDeleteInput, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getUnregisterPushTokenUrl(),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      pushTokenDeleteInput,)
+  }
+);}
+
+
+
+
+export const getUnregisterPushTokenMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unregisterPushToken>>, TError,{data: BodyType<PushTokenDeleteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unregisterPushToken>>, TError,{data: BodyType<PushTokenDeleteInput>}, TContext> => {
+
+const mutationKey = ['unregisterPushToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unregisterPushToken>>, {data: BodyType<PushTokenDeleteInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  unregisterPushToken(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnregisterPushTokenMutationResult = NonNullable<Awaited<ReturnType<typeof unregisterPushToken>>>
+    export type UnregisterPushTokenMutationBody = BodyType<PushTokenDeleteInput>
+    export type UnregisterPushTokenMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Unregister a push token
+ */
+export const useUnregisterPushToken = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unregisterPushToken>>, TError,{data: BodyType<PushTokenDeleteInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unregisterPushToken>>,
+        TError,
+        {data: BodyType<PushTokenDeleteInput>},
+        TContext
+      > => {
+      return useMutation(getUnregisterPushTokenMutationOptions(options));
+    }
+
+export const getGetWebAuthnRegisterOptionsUrl = () => {
+
+
+
+
+  return `/api/auth/webauthn/register/options`
+}
+
+/**
+ * @summary Get WebAuthn registration options
+ */
+export const getWebAuthnRegisterOptions = async ( options?: RequestInit): Promise<GetWebAuthnRegisterOptions200> => {
+
+  return customFetch<GetWebAuthnRegisterOptions200>(getGetWebAuthnRegisterOptionsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getGetWebAuthnRegisterOptionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getWebAuthnRegisterOptions>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof getWebAuthnRegisterOptions>>, TError,void, TContext> => {
+
+const mutationKey = ['getWebAuthnRegisterOptions'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getWebAuthnRegisterOptions>>, void> = () => {
+
+
+          return  getWebAuthnRegisterOptions(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GetWebAuthnRegisterOptionsMutationResult = NonNullable<Awaited<ReturnType<typeof getWebAuthnRegisterOptions>>>
+
+    export type GetWebAuthnRegisterOptionsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Get WebAuthn registration options
+ */
+export const useGetWebAuthnRegisterOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getWebAuthnRegisterOptions>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof getWebAuthnRegisterOptions>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getGetWebAuthnRegisterOptionsMutationOptions(options));
+    }
+
+export const getVerifyWebAuthnRegistrationUrl = () => {
+
+
+
+
+  return `/api/auth/webauthn/register/verify`
+}
+
+/**
+ * @summary Verify WebAuthn registration
+ */
+export const verifyWebAuthnRegistration = async (webAuthnVerifyRegisterInput: WebAuthnVerifyRegisterInput, options?: RequestInit): Promise<MessageResponse> => {
+
+  return customFetch<MessageResponse>(getVerifyWebAuthnRegistrationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      webAuthnVerifyRegisterInput,)
+  }
+);}
+
+
+
+
+export const getVerifyWebAuthnRegistrationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyWebAuthnRegistration>>, TError,{data: BodyType<WebAuthnVerifyRegisterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyWebAuthnRegistration>>, TError,{data: BodyType<WebAuthnVerifyRegisterInput>}, TContext> => {
+
+const mutationKey = ['verifyWebAuthnRegistration'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyWebAuthnRegistration>>, {data: BodyType<WebAuthnVerifyRegisterInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyWebAuthnRegistration(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyWebAuthnRegistrationMutationResult = NonNullable<Awaited<ReturnType<typeof verifyWebAuthnRegistration>>>
+    export type VerifyWebAuthnRegistrationMutationBody = BodyType<WebAuthnVerifyRegisterInput>
+    export type VerifyWebAuthnRegistrationMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Verify WebAuthn registration
+ */
+export const useVerifyWebAuthnRegistration = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyWebAuthnRegistration>>, TError,{data: BodyType<WebAuthnVerifyRegisterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyWebAuthnRegistration>>,
+        TError,
+        {data: BodyType<WebAuthnVerifyRegisterInput>},
+        TContext
+      > => {
+      return useMutation(getVerifyWebAuthnRegistrationMutationOptions(options));
+    }
+
+export const getGetWebAuthnLoginOptionsUrl = () => {
+
+
+
+
+  return `/api/auth/webauthn/login/options`
+}
+
+/**
+ * @summary Get WebAuthn login challenge
+ */
+export const getWebAuthnLoginOptions = async (webAuthnLoginOptionsInput: WebAuthnLoginOptionsInput, options?: RequestInit): Promise<WebAuthnOptionsResponse> => {
+
+  return customFetch<WebAuthnOptionsResponse>(getGetWebAuthnLoginOptionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      webAuthnLoginOptionsInput,)
+  }
+);}
+
+
+
+
+export const getGetWebAuthnLoginOptionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getWebAuthnLoginOptions>>, TError,{data: BodyType<WebAuthnLoginOptionsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof getWebAuthnLoginOptions>>, TError,{data: BodyType<WebAuthnLoginOptionsInput>}, TContext> => {
+
+const mutationKey = ['getWebAuthnLoginOptions'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getWebAuthnLoginOptions>>, {data: BodyType<WebAuthnLoginOptionsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  getWebAuthnLoginOptions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GetWebAuthnLoginOptionsMutationResult = NonNullable<Awaited<ReturnType<typeof getWebAuthnLoginOptions>>>
+    export type GetWebAuthnLoginOptionsMutationBody = BodyType<WebAuthnLoginOptionsInput>
+    export type GetWebAuthnLoginOptionsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Get WebAuthn login challenge
+ */
+export const useGetWebAuthnLoginOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getWebAuthnLoginOptions>>, TError,{data: BodyType<WebAuthnLoginOptionsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof getWebAuthnLoginOptions>>,
+        TError,
+        {data: BodyType<WebAuthnLoginOptionsInput>},
+        TContext
+      > => {
+      return useMutation(getGetWebAuthnLoginOptionsMutationOptions(options));
+    }
+
+export const getVerifyWebAuthnLoginUrl = () => {
+
+
+
+
+  return `/api/auth/webauthn/login/verify`
+}
+
+/**
+ * @summary Verify WebAuthn login and return JWT
+ */
+export const verifyWebAuthnLogin = async (webAuthnVerifyLoginInput: WebAuthnVerifyLoginInput, options?: RequestInit): Promise<AuthResponse> => {
+
+  return customFetch<AuthResponse>(getVerifyWebAuthnLoginUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      webAuthnVerifyLoginInput,)
+  }
+);}
+
+
+
+
+export const getVerifyWebAuthnLoginMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyWebAuthnLogin>>, TError,{data: BodyType<WebAuthnVerifyLoginInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyWebAuthnLogin>>, TError,{data: BodyType<WebAuthnVerifyLoginInput>}, TContext> => {
+
+const mutationKey = ['verifyWebAuthnLogin'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyWebAuthnLogin>>, {data: BodyType<WebAuthnVerifyLoginInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyWebAuthnLogin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyWebAuthnLoginMutationResult = NonNullable<Awaited<ReturnType<typeof verifyWebAuthnLogin>>>
+    export type VerifyWebAuthnLoginMutationBody = BodyType<WebAuthnVerifyLoginInput>
+    export type VerifyWebAuthnLoginMutationError = ErrorType<void>
+
+    /**
+ * @summary Verify WebAuthn login and return JWT
+ */
+export const useVerifyWebAuthnLogin = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyWebAuthnLogin>>, TError,{data: BodyType<WebAuthnVerifyLoginInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyWebAuthnLogin>>,
+        TError,
+        {data: BodyType<WebAuthnVerifyLoginInput>},
+        TContext
+      > => {
+      return useMutation(getVerifyWebAuthnLoginMutationOptions(options));
+    }
+
+export const getGetVapidPublicKeyUrl = () => {
+
+
+
+
+  return `/api/push/vapid-public-key`
+}
+
+/**
+ * @summary Get VAPID public key for web push
+ */
+export const getVapidPublicKey = async ( options?: RequestInit): Promise<VapidPublicKeyResponse> => {
+
+  return customFetch<VapidPublicKeyResponse>(getGetVapidPublicKeyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetVapidPublicKeyQueryKey = () => {
+    return [
+    `/api/push/vapid-public-key`
+    ] as const;
+    }
+
+
+export const getGetVapidPublicKeyQueryOptions = <TData = Awaited<ReturnType<typeof getVapidPublicKey>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVapidPublicKey>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetVapidPublicKeyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getVapidPublicKey>>> = ({ signal }) => getVapidPublicKey({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getVapidPublicKey>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetVapidPublicKeyQueryResult = NonNullable<Awaited<ReturnType<typeof getVapidPublicKey>>>
+export type GetVapidPublicKeyQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get VAPID public key for web push
+ */
+
+export function useGetVapidPublicKey<TData = Awaited<ReturnType<typeof getVapidPublicKey>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVapidPublicKey>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetVapidPublicKeyQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

@@ -874,3 +874,97 @@ export const GetEmployeeReportResponse = zod.object({
 })
 
 
+/**
+ * @summary Register a push token (Expo push token or Web Push subscription)
+ */
+export const RegisterPushTokenBody = zod.object({
+  "token": zod.string(),
+  "platform": zod.enum(['expo', 'web']),
+  "webSubscription": zod.object({
+
+}).passthrough().nullish()
+})
+
+export const RegisterPushTokenResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Unregister a push token
+ */
+export const UnregisterPushTokenBody = zod.object({
+  "token": zod.string()
+})
+
+export const UnregisterPushTokenResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Get WebAuthn registration options
+ */
+export const GetWebAuthnRegisterOptionsResponse = zod.object({
+
+}).passthrough()
+
+
+/**
+ * @summary Verify WebAuthn registration
+ */
+export const VerifyWebAuthnRegistrationBody = zod.object({
+  "credential": zod.object({
+
+}).passthrough()
+})
+
+export const VerifyWebAuthnRegistrationResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Get WebAuthn login challenge
+ */
+export const GetWebAuthnLoginOptionsBody = zod.object({
+  "mobile": zod.string()
+})
+
+export const GetWebAuthnLoginOptionsResponse = zod.object({
+  "challenge": zod.string()
+})
+
+
+/**
+ * @summary Verify WebAuthn login and return JWT
+ */
+export const VerifyWebAuthnLoginBody = zod.object({
+  "mobile": zod.string(),
+  "credential": zod.object({
+
+}).passthrough()
+})
+
+export const VerifyWebAuthnLoginResponse = zod.object({
+  "token": zod.string(),
+  "user": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+})
+})
+
+
+/**
+ * @summary Get VAPID public key for web push
+ */
+export const GetVapidPublicKeyResponse = zod.object({
+  "publicKey": zod.string()
+})
+
+

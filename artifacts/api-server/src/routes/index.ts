@@ -8,6 +8,8 @@ import messagesRouter from "./messages";
 import notificationsRouter from "./notifications";
 import dashboardRouter from "./dashboard";
 import reportsRouter from "./reports";
+import pushRouter from "./push";
+import webauthnRouter from "./webauthn";
 
 const router: IRouter = Router();
 
@@ -20,5 +22,7 @@ router.use(messagesRouter);
 router.use(notificationsRouter);
 router.use(dashboardRouter);
 router.use(reportsRouter);
+router.use(pushRouter);
+router.use(webauthnRouter);
 
 export default router;

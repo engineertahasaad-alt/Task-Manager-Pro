@@ -222,6 +222,51 @@ export interface ReportData {
   employeeName?: string | null;
 }
 
+export type PushTokenInputPlatform = typeof PushTokenInputPlatform[keyof typeof PushTokenInputPlatform];
+
+
+export const PushTokenInputPlatform = {
+  expo: 'expo',
+  web: 'web',
+} as const;
+
+export type PushTokenInputWebSubscription = { [key: string]: unknown } | null;
+
+export interface PushTokenInput {
+  token: string;
+  platform: PushTokenInputPlatform;
+  webSubscription?: PushTokenInputWebSubscription;
+}
+
+export interface PushTokenDeleteInput {
+  token: string;
+}
+
+export interface WebAuthnLoginOptionsInput {
+  mobile: string;
+}
+
+export type WebAuthnVerifyRegisterInputCredential = { [key: string]: unknown };
+
+export interface WebAuthnVerifyRegisterInput {
+  credential: WebAuthnVerifyRegisterInputCredential;
+}
+
+export type WebAuthnVerifyLoginInputCredential = { [key: string]: unknown };
+
+export interface WebAuthnVerifyLoginInput {
+  mobile: string;
+  credential: WebAuthnVerifyLoginInputCredential;
+}
+
+export interface WebAuthnOptionsResponse {
+  challenge: string;
+}
+
+export interface VapidPublicKeyResponse {
+  publicKey: string;
+}
+
 export type ListTasksParams = {
 status?: ListTasksStatus;
 /**
@@ -316,4 +361,6 @@ employeeId?: number;
 startDate?: string;
 endDate?: string;
 };
+
+export type GetWebAuthnRegisterOptions200 = { [key: string]: unknown };
 
