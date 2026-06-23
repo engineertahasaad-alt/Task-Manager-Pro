@@ -63,7 +63,7 @@ export default function TaskDetail() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const token = localStorage.getItem("taskflow_token");
+    const token = localStorage.getItem("taskaya_token");
     const formData = new FormData();
     formData.append('file', file);
     try {

@@ -35,7 +35,7 @@ export default function NewTask() {
   });
 
   const uploadFile = async (taskId: number, file: File) => {
-    const token = localStorage.getItem("taskflow_token");
+    const token = localStorage.getItem("taskaya_token");
     const formData = new FormData();
     formData.append('file', file);
     try {

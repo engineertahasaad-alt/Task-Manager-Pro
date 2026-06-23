@@ -14,7 +14,7 @@ import { logger } from "../lib/logger";
 
 const router = Router();
 
-const RP_NAME = "TaskFlow";
+const RP_NAME = "Taskaya";
 const RP_ID = process.env.REPLIT_DEV_DOMAIN?.replace(/^https?:\/\//, "") ?? "localhost";
 const ORIGIN = process.env.REPLIT_DEV_DOMAIN
   ? `https://${RP_ID}`

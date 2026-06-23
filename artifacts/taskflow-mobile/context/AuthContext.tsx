@@ -175,7 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const LocalAuth = require('expo-local-authentication');
       const result = await LocalAuth.authenticateAsync({
-        promptMessage: 'Sign in to TaskFlow',
+        promptMessage: 'Sign in to Taskaya',
         cancelLabel: 'Use Password',
         disableDeviceFallback: false,
       });

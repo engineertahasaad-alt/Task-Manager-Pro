@@ -150,7 +150,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.version, { color: colors.mutedForeground }]}>TaskFlow Mobile v1.0.0</Text>
+        <Text style={[styles.version, { color: colors.mutedForeground }]}>Taskaya Mobile v1.0.0</Text>
       </ScrollView>
     </View>
   );

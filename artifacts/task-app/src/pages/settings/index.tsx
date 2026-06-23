@@ -32,7 +32,7 @@ export default function Settings() {
   const { data: teamInfo } = useQuery({
     queryKey: ["team-info"],
     queryFn: async () => {
-      const token = localStorage.getItem("taskflow_token");
+      const token = localStorage.getItem("taskaya_token");
       const res = await fetch("/api/team/info", {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -71,7 +71,7 @@ export default function Settings() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("taskflow_token");
+    localStorage.removeItem("taskaya_token");
     window.location.href = "/login";
   };
 
