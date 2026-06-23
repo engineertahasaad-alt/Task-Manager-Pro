@@ -80,7 +80,7 @@ export default function SignupScreen() {
           </TouchableOpacity>
 
           <Text style={[styles.title, { color: colors.foreground }]}>Create Account</Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Join your team on TaskFlow</Text>
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>Join your team on Taskaya</Text>
 
           <View style={styles.modeToggle}>
             <TouchableOpacity

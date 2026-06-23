@@ -16,9 +16,9 @@ const storage = Platform.OS === 'web'
       };
     })();
 
-const TOKEN_KEY = 'taskflow_token';
-const USER_KEY = 'taskflow_user';
-const BIOMETRIC_KEY = 'taskflow_biometric_enabled';
+const TOKEN_KEY = 'taskaya_token';
+const USER_KEY = 'taskaya_user';
+const BIOMETRIC_KEY = 'taskaya_biometric_enabled';
 
 let _currentToken: string | null = null;
 export function getCurrentToken(): string | null {

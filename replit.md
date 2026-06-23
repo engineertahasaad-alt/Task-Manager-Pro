@@ -1,6 +1,6 @@
-# TaskFlow
+# Taskaya
 
-A team task management PWA that replaces WhatsApp/phone-call task assignments for small and medium teams.
+A team task management PWA/mobile app that replaces WhatsApp/phone-call task assignments for small and medium teams.
 
 ## Run & Operate
 
@@ -33,7 +33,7 @@ A team task management PWA that replaces WhatsApp/phone-call task assignments fo
 
 ## Architecture decisions
 
-- JWT stored in localStorage under key `taskflow_token`; sent as `Authorization: Bearer <token>` header
+- JWT stored in localStorage under key `taskaya_token` (web) / `taskaya_token` in expo-secure-store (mobile); sent as `Authorization: Bearer <token>` header
 - File uploads handled via multer directly (not in OpenAPI codegen — multipart/form-data breaks Orval's Node.js type generation)
 - Task status flow: open → completed (by member) → approved (by manager/deputy) or reopened
 - Notifications are created server-side on task state changes (assigned, completed, approved, reopened)

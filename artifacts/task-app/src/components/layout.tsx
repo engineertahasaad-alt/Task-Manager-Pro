@@ -32,7 +32,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
   const handleLogout = () => {
-    localStorage.removeItem("taskflow_token");
+    localStorage.removeItem("taskaya_token");
     window.location.href = "/login";
   };
 
@@ -89,7 +89,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <header className="md:hidden flex h-16 items-center justify-between border-b bg-white px-4 sticky top-0 z-30">
         <div className="flex items-center">
           <CheckSquare className="h-6 w-6 text-primary mr-2" />
-          <span className="font-bold text-lg">TaskFlow</span>
+          <span className="font-bold text-lg">Taskaya</span>
         </div>
         <div className="flex items-center gap-2">
           {unreadCount > 0 && (

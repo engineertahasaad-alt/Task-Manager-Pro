@@ -3,7 +3,7 @@ import App from "./App";
 import "./index.css";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 
-setAuthTokenGetter(() => localStorage.getItem("taskflow_token"));
+setAuthTokenGetter(() => localStorage.getItem("taskaya_token"));
 
 createRoot(document.getElementById("root")!).render(<App />);
 

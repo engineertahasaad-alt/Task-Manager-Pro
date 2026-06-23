@@ -80,7 +80,7 @@ export default function LoginScreen() {
             <View style={[styles.logoContainer, { backgroundColor: colors.primary + '15' }]}>
               <Feather name="check-square" size={36} color={colors.primary} />
             </View>
-            <Text style={[styles.appName, { color: colors.foreground }]}>TaskFlow</Text>
+            <Text style={[styles.appName, { color: colors.foreground }]}>Taskaya</Text>
             <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
               Team task management
             </Text>

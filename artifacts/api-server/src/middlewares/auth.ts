@@ -4,7 +4,7 @@ import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
-const JWT_SECRET = process.env.JWT_SECRET ?? process.env.SESSION_SECRET ?? "taskflow-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET ?? process.env.SESSION_SECRET ?? "taskaya-secret-key";
 
 export interface AuthUser {
   id: number;

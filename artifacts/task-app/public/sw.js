@@ -1,4 +1,4 @@
-const CACHE_NAME = 'taskflow-v1';
+const CACHE_NAME = 'taskaya-v1';
 const STATIC_ASSETS = ['/', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -40,9 +40,9 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   if (!event.data) return;
   let data = {};
-  try { data = event.data.json(); } catch { data = { title: 'TaskFlow', body: event.data.text() }; }
+  try { data = event.data.json(); } catch { data = { title: 'Taskaya', body: event.data.text() }; }
 
-  const { title = 'TaskFlow', body = 'New notification', data: notifData = {} } = data;
+  const { title = 'Taskaya', body = 'New notification', data: notifData = {} } = data;
 
   event.waitUntil(
     self.registration.showNotification(title, {

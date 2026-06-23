@@ -44,7 +44,7 @@ export default function Signup() {
   const handleSubmit = (values: any) => {
     signupMutation.mutate({ data: values }, {
       onSuccess: (res: any) => {
-        localStorage.setItem("taskflow_token", res.token);
+        localStorage.setItem("taskaya_token", res.token);
         if (res.team) {
           toast({
             title: mode === "create" ? `Team "${res.team.name}" created!` : `Joined team "${res.team.name}"`,

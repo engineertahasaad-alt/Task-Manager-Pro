@@ -18,7 +18,7 @@ export async function ensureVapidKeys(): Promise<{ publicKey: string; privateKey
     if (publicRow && privateRow) {
       if (!vapidInitialized) {
         webpush.setVapidDetails(
-          "mailto:admin@taskflow.app",
+          "mailto:admin@taskaya.app",
           publicRow.value,
           privateRow.value
         );
@@ -33,7 +33,7 @@ export async function ensureVapidKeys(): Promise<{ publicKey: string; privateKey
       ["vapid_public", keys.publicKey, "vapid_private", keys.privateKey]
     );
 
-    webpush.setVapidDetails("mailto:admin@taskflow.app", keys.publicKey, keys.privateKey);
+    webpush.setVapidDetails("mailto:admin@taskaya.app", keys.publicKey, keys.privateKey);
     vapidInitialized = true;
     return keys;
   } catch (err) {

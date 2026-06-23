@@ -29,7 +29,7 @@ export default function Login() {
   const onSubmit = (values: z.infer<typeof loginSchema>) => {
     loginMutation.mutate({ data: values }, {
       onSuccess: (res) => {
-        localStorage.setItem("taskflow_token", res.token);
+        localStorage.setItem("taskaya_token", res.token);
         if (res.user.mustChangePassword) {
           setLocation("/change-password");
         } else {

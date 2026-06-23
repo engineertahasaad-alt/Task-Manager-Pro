@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "TaskFlow Mobile",
-    "slug": "taskflow-mobile",
+    "name": "Taskaya",
+    "slug": "taskaya",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "taskflow-mobile",
+    "scheme": "taskaya",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -14,9 +14,16 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.taskaya.app"
     },
-    "android": {},
+    "android": {
+      "package": "com.taskaya.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#4F6EF7"
+      }
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
