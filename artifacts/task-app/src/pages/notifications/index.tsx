@@ -2,13 +2,22 @@ import { useListNotifications, useMarkNotificationRead, useMarkAllNotificationsR
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Bell, CheckCircle2, Inbox } from "lucide-react";
+import { Bell, CheckCircle2, Inbox, MessageSquare, CheckSquare, RotateCcw, ThumbsUp } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { Link } from "wouter";
+import { useLocation } from "wouter";
+import { useMarkAllRead } from "@workspace/api-client-react";
+
+const TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string }> = {
+  task_assigned:   { icon: Bell,          color: "text-blue-600",   bg: "bg-blue-100" },
+  task_completed:  { icon: CheckSquare,   color: "text-amber-600",  bg: "bg-amber-100" },
+  task_approved:   { icon: ThumbsUp,      color: "text-green-600",  bg: "bg-green-100" },
+  task_reopened:   { icon: RotateCcw,     color: "text-orange-600", bg: "bg-orange-100" },
+  deadline_approaching: { icon: Bell,     color: "text-red-600",    bg: "bg-red-100" },
+};
 
 export default function Notifications() {
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const { data: notifications, isLoading } = useListNotifications();
   const markReadMutation = useMarkNotificationRead();
   const markAllReadMutation = useMarkAllNotificationsRead();
@@ -25,7 +34,15 @@ export default function Notifications() {
     });
   };
 
+  const handleClick = (notif: any) => {
+    if (!notif.isRead) handleMarkRead(notif.id);
+    if (notif.taskId) setLocation(`/tasks/${notif.taskId}`);
+  };
+
   const unreadCount = notifications?.filter(n => !n.isRead).length || 0;
+  const sorted = [...(notifications ?? [])].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 
   return (
     <AppLayout>
@@ -33,54 +50,79 @@ export default function Notifications() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Notifications</h1>
-            <p className="text-muted-foreground">Stay updated on your tasks.</p>
+            <p className="text-muted-foreground">
+              {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}` : "All caught up!"}
+            </p>
           </div>
           {unreadCount > 0 && (
             <Button variant="outline" onClick={handleMarkAllRead} disabled={markAllReadMutation.isPending}>
-              <CheckCircle2 className="mr-2 h-4 w-4" /> Mark all as read
+              <CheckCircle2 className="mr-2 h-4 w-4" /> Mark all read
             </Button>
           )}
         </div>
 
         {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading...</div>
-        ) : notifications?.length === 0 ? (
-          <div className="text-center py-16 border rounded-lg bg-gray-50/50">
-            <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Inbox className="h-6 w-6 text-gray-400" />
+          <div className="space-y-3">
+            {[1,2,3].map(i => <div key={i} className="h-20 rounded-xl bg-gray-100 animate-pulse" />)}
+          </div>
+        ) : sorted.length === 0 ? (
+          <div className="text-center py-20 border rounded-2xl bg-gray-50/50">
+            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <Inbox className="h-8 w-8 text-gray-300" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900">You're all caught up!</h3>
-            <p className="mt-1 text-sm text-gray-500">No new notifications at this time.</p>
+            <h3 className="text-lg font-semibold text-gray-700">You're all caught up!</h3>
+            <p className="mt-1 text-sm text-gray-400">No notifications yet.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {notifications?.map((notif) => (
-              <Card key={notif.id} className={`${!notif.isRead ? 'border-primary/30 bg-primary/5' : 'opacity-70'} transition-all`}>
-                <CardContent className="p-4 flex gap-4">
-                  <div className="mt-1">
-                    <div className={`h-2 w-2 rounded-full ${!notif.isRead ? 'bg-primary' : 'bg-transparent'}`} />
+          <div className="space-y-2">
+            {sorted.map((notif) => {
+              const cfg = TYPE_CONFIG[notif.type] ?? TYPE_CONFIG.task_assigned;
+              const Icon = cfg.icon;
+              const isClickable = !!notif.taskId;
+              return (
+                <div
+                  key={notif.id}
+                  onClick={() => handleClick(notif)}
+                  className={[
+                    "flex gap-4 items-start p-4 rounded-xl border transition-all",
+                    !notif.isRead ? "bg-indigo-50/60 border-indigo-200" : "bg-white border-gray-100 opacity-75",
+                    isClickable ? "cursor-pointer hover:shadow-sm hover:border-indigo-300" : "",
+                  ].join(" ")}
+                >
+                  <div className={`shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${cfg.bg}`}>
+                    <Icon className={`h-5 w-5 ${cfg.color}`} />
                   </div>
-                  <div className="flex-1 space-y-1">
-                    <p className={`text-sm ${!notif.isRead ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
+
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm leading-snug ${!notif.isRead ? "font-semibold text-gray-900" : "text-gray-600"}`}>
                       {notif.message}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400 mt-1">
                       {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
                     </p>
-                    {notif.taskId && (
-                      <Link href={`/tasks/${notif.taskId}`} className="inline-block mt-2 text-sm text-primary hover:underline font-medium">
-                        View Task
-                      </Link>
+                    {isClickable && (
+                      <p className="text-xs text-indigo-500 mt-1 font-medium">Tap to open task →</p>
                     )}
                   </div>
-                  {!notif.isRead && (
-                    <Button variant="ghost" size="sm" onClick={() => handleMarkRead(notif.id)} className="shrink-0 text-xs h-8">
-                      Mark read
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+
+                  <div className="shrink-0 flex flex-col items-end gap-2">
+                    {!notif.isRead && (
+                      <span className="h-2.5 w-2.5 rounded-full bg-indigo-500 mt-1" />
+                    )}
+                    {!notif.isRead && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs h-7 px-2"
+                        onClick={(e) => { e.stopPropagation(); handleMarkRead(notif.id); }}
+                      >
+                        Dismiss
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

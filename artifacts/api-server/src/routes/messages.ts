@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, messagesTable, tasksTable, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, messagesTable, tasksTable, usersTable, notificationsTable } from "@workspace/db";
+import { eq, inArray } from "drizzle-orm";
 import { ListMessagesParams, SendMessageParams, SendMessageBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { serializeUser } from "./auth";
@@ -70,13 +70,43 @@ router.post("/tasks/:id/messages", async (req, res): Promise<void> => {
     })
     .returning();
 
-  const [sender] = await db.select().from(usersTable).where(eq(usersTable.id, message.senderId));
+  const sender = req.user!;
+  const senderRole = sender.role;
+  const isManager = senderRole === "owner" || senderRole === "deputy";
+
+  if (isManager) {
+    // Manager sent a message → notify the assignee
+    if (task.assigneeId !== sender.id) {
+      await db.insert(notificationsTable).values({
+        userId: task.assigneeId,
+        type: "task_assigned",
+        message: `${sender.fullName} sent you a message on task: "${task.title}"`,
+        taskId: task.id,
+      });
+    }
+  } else {
+    // Member sent a message → notify all managers
+    const managers = await db
+      .select()
+      .from(usersTable)
+      .where(inArray(usersTable.role, ["owner", "deputy"]));
+    for (const mgr of managers) {
+      if (mgr.id !== sender.id) {
+        await db.insert(notificationsTable).values({
+          userId: mgr.id,
+          type: "task_assigned",
+          message: `${sender.fullName} replied on task: "${task.title}"`,
+          taskId: task.id,
+        });
+      }
+    }
+  }
 
   res.status(201).json({
     id: message.id,
     taskId: message.taskId,
     senderId: message.senderId,
-    sender: sender ? serializeUser(sender) : undefined,
+    sender: serializeUser(sender as any),
     content: message.content,
     attachmentUrl: message.attachmentUrl ?? null,
     attachmentName: message.attachmentName ?? null,

@@ -51,7 +51,7 @@ export default function Login() {
               <CheckSquare className="h-6 w-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Welcome to TaskFlow</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">Welcome to Taskaya</CardTitle>
           <CardDescription>Enter your details to sign in to your account</CardDescription>
         </CardHeader>
         <CardContent>

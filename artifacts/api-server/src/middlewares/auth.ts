@@ -9,6 +9,7 @@ const JWT_SECRET = process.env.JWT_SECRET ?? process.env.SESSION_SECRET ?? "task
 export interface AuthUser {
   id: number;
   role: "owner" | "deputy" | "member";
+  teamId: number | null;
 }
 
 declare global {
@@ -37,7 +38,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-    req.user = { id: user.id, role: user.role as AuthUser["role"] };
+    req.user = { id: user.id, role: user.role as AuthUser["role"], teamId: user.teamId ?? null };
     next();
   } catch (err) {
     logger.warn({ err }, "JWT verification failed");

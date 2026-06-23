@@ -42,7 +42,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex w-64 flex-col border-r bg-white">
         <div className="flex h-16 items-center border-b px-6">
           <CheckSquare className="h-6 w-6 text-primary mr-2" />
-          <span className="font-bold text-lg tracking-tight">TaskFlow</span>
+          <span className="font-bold text-lg tracking-tight">Taskaya</span>
         </div>
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="space-y-1 px-4">

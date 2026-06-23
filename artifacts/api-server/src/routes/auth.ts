@@ -1,15 +1,17 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, teamsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { LoginBody, ChangePasswordBody, SignupBody, ForgotPasswordBody } from "@workspace/api-zod";
 import { signToken, requireAuth } from "../middlewares/auth";
+import { randomBytes } from "crypto";
 
 const router = Router();
 
 function serializeUser(user: typeof usersTable.$inferSelect) {
   return {
     id: user.id,
+    teamId: user.teamId,
     fullName: user.fullName,
     mobile: user.mobile,
     role: user.role,
@@ -42,22 +44,43 @@ router.post("/auth/signup", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { fullName, mobile, password } = parsed.data;
+  const { fullName, mobile, password, inviteCode, teamName } = parsed.data as any;
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.mobile, mobile));
   if (existing) {
     res.status(409).json({ error: "Mobile number already registered" });
     return;
   }
   const passwordHash = await bcrypt.hash(password, 10);
-  const [user] = await db.insert(usersTable).values({
-    fullName,
-    mobile,
-    passwordHash,
-    role: "member",
-    mustChangePassword: false,
-  }).returning();
-  const token = signToken(user.id);
-  res.status(201).json({ token, user: serializeUser(user) });
+
+  if (inviteCode) {
+    // Joining an existing team via invite code
+    const [team] = await db.select().from(teamsTable).where(eq(teamsTable.inviteCode, inviteCode.toUpperCase()));
+    if (!team) {
+      res.status(404).json({ error: "Invalid invite code" });
+      return;
+    }
+    const [user] = await db.insert(usersTable).values({
+      fullName, mobile, passwordHash,
+      teamId: team.id,
+      role: "member",
+      mustChangePassword: false,
+    }).returning();
+    const token = signToken(user.id);
+    res.status(201).json({ token, user: serializeUser(user), team: { id: team.id, name: team.name, inviteCode: team.inviteCode } });
+  } else {
+    // Creating a new team — user becomes owner
+    const name = teamName?.trim() || `${fullName}'s Team`;
+    const invCode = randomBytes(4).toString("hex").toUpperCase();
+    const [team] = await db.insert(teamsTable).values({ name, inviteCode: invCode }).returning();
+    const [user] = await db.insert(usersTable).values({
+      fullName, mobile, passwordHash,
+      teamId: team.id,
+      role: "owner",
+      mustChangePassword: false,
+    }).returning();
+    const token = signToken(user.id);
+    res.status(201).json({ token, user: serializeUser(user), team: { id: team.id, name: team.name, inviteCode: team.inviteCode } });
+  }
 });
 
 router.post("/auth/login", async (req, res): Promise<void> => {

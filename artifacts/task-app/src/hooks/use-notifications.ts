@@ -22,29 +22,32 @@ export function playNotificationSound() {
     if (!ctx) return;
     if (ctx.state === "suspended") ctx.resume();
     const t = ctx.currentTime;
-    const osc = ctx.createOscillator();
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.connect(gain);
+    osc1.connect(gain);
+    osc2.connect(gain);
     gain.connect(ctx.destination);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, t);
-    osc.frequency.setValueAtTime(660, t + 0.12);
-    gain.gain.setValueAtTime(0.35, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-    osc.start(t);
-    osc.stop(t + 0.5);
-  } catch {
-  }
+    osc1.type = "sine";
+    osc2.type = "sine";
+    osc1.frequency.setValueAtTime(880, t);
+    osc2.frequency.setValueAtTime(1100, t + 0.13);
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.3, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    osc1.start(t); osc1.stop(t + 0.15);
+    osc2.start(t + 0.13); osc2.stop(t + 0.6);
+  } catch {}
 }
 
 export function useNotifications(enabled = true) {
   const { data: notifications } = useListNotifications({
-    query: { refetchInterval: enabled ? 30000 : false, enabled },
+    query: { refetchInterval: enabled ? 15000 : false, enabled },
   });
 
   const unreadCount = notifications?.filter((n) => !n.isRead).length ?? 0;
   const initializedRef = useRef(false);
-  const prevCountRef = useRef(0);
+  const prevIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (!enabled) return;
@@ -54,29 +57,42 @@ export function useNotifications(enabled = true) {
   }, [enabled]);
 
   useEffect(() => {
-    if (notifications === undefined) return;
+    if (!enabled || notifications === undefined) return;
+
+    const currentUnread = notifications.filter((n) => !n.isRead);
+    const currentIds = new Set(currentUnread.map((n) => n.id));
 
     if (!initializedRef.current) {
       initializedRef.current = true;
-      prevCountRef.current = unreadCount;
+      prevIdsRef.current = currentIds;
       return;
     }
 
-    if (unreadCount > prevCountRef.current) {
+    const newOnes = currentUnread.filter((n) => !prevIdsRef.current.has(n.id));
+
+    if (newOnes.length > 0) {
       playNotificationSound();
-      const diff = unreadCount - prevCountRef.current;
       if ("Notification" in window && Notification.permission === "granted") {
-        try {
-          new Notification("TaskFlow", {
-            body: `You have ${diff} new notification${diff > 1 ? "s" : ""}`,
-            icon: "/favicon.ico",
-            tag: "taskflow-notification",
-          });
-        } catch {}
+        newOnes.forEach((n) => {
+          try {
+            const browserNotif = new Notification("Taskaya", {
+              body: n.message,
+              icon: "/favicon.svg",
+              tag: `taskaya-notif-${n.id}`,
+            });
+            if (n.taskId) {
+              browserNotif.onclick = () => {
+                window.focus();
+                window.location.href = `/tasks/${n.taskId}`;
+              };
+            }
+          } catch {}
+        });
       }
     }
-    prevCountRef.current = unreadCount;
-  }, [notifications, unreadCount]);
 
-  return { unreadCount, notifications };
+    prevIdsRef.current = currentIds;
+  }, [enabled, notifications]);
+
+  return { unreadCount, notifications: notifications ?? [] };
 }

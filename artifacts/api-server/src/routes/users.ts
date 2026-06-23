@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, usersTable, teamsTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import { CreateUserBody, UpdateUserBody, GetUserParams, UpdateUserParams, DisableUserParams, ResetUserPasswordBody, ResetUserPasswordParams } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeUser } from "./auth";
@@ -10,9 +10,20 @@ const router = Router();
 
 router.use(requireAuth);
 
-router.get("/users", async (_req, res): Promise<void> => {
-  const users = await db.select().from(usersTable).orderBy(usersTable.fullName);
+router.get("/users", async (req, res): Promise<void> => {
+  const teamId = req.user!.teamId;
+  const users = teamId != null
+    ? await db.select().from(usersTable).where(eq(usersTable.teamId, teamId)).orderBy(usersTable.fullName)
+    : await db.select().from(usersTable).orderBy(usersTable.fullName);
   res.json(users.map(serializeUser));
+});
+
+router.get("/team/info", async (req, res): Promise<void> => {
+  const teamId = req.user!.teamId;
+  if (!teamId) { res.status(404).json({ error: "No team" }); return; }
+  const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, teamId));
+  if (!team) { res.status(404).json({ error: "Team not found" }); return; }
+  res.json({ id: team.id, name: team.name, inviteCode: team.inviteCode });
 });
 
 router.post("/users", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
@@ -42,7 +53,7 @@ router.post("/users", requireRole("owner", "deputy"), async (req, res): Promise<
   const passwordHash = await bcrypt.hash("123", 10);
   const [user] = await db
     .insert(usersTable)
-    .values({ fullName, mobile, role, passwordHash, mustChangePassword: true })
+    .values({ fullName, mobile, role, passwordHash, mustChangePassword: true, teamId: req.user!.teamId })
     .returning();
   res.status(201).json(serializeUser(user));
 });

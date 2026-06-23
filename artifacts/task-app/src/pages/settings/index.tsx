@@ -10,7 +10,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useChangePassword } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { KeyRound, LogOut, User } from "lucide-react";
+import { KeyRound, LogOut, User, Users, Copy, Check } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -25,6 +26,30 @@ export default function Settings() {
   const { data: user } = useGetMe();
   const { toast } = useToast();
   const changePasswordMutation = useChangePassword();
+  const [copied, setCopied] = useState(false);
+  const isOwner = user?.role === "owner";
+
+  const { data: teamInfo } = useQuery({
+    queryKey: ["team-info"],
+    queryFn: async () => {
+      const token = localStorage.getItem("taskflow_token");
+      const res = await fetch("/api/team/info", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      return res.json() as Promise<{ id: number; name: string; inviteCode: string }>;
+    },
+    enabled: !!user,
+  });
+
+  const handleCopyCode = () => {
+    if (teamInfo?.inviteCode) {
+      navigator.clipboard.writeText(teamInfo.inviteCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({ title: "Invite code copied!" });
+    }
+  };
 
   const form = useForm<z.infer<typeof passwordSchema>>({
     resolver: zodResolver(passwordSchema),
@@ -57,6 +82,33 @@ export default function Settings() {
           <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground">Manage your account and preferences.</p>
         </div>
+
+        {teamInfo && (
+          <Card className="border-indigo-100 bg-indigo-50/30">
+            <CardHeader>
+              <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5 text-indigo-600" /> Team</CardTitle>
+              <CardDescription>Share the invite code so others can join your team.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-500">Team Name</label>
+                <p className="text-md font-medium">{teamInfo.name}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500 block mb-1">Invite Code</label>
+                <div className="flex items-center gap-2">
+                  <div className="bg-white border-2 border-indigo-200 rounded-lg px-4 py-2 font-mono text-xl font-bold tracking-widest text-indigo-700 select-all">
+                    {teamInfo.inviteCode}
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleCopyCode} className="shrink-0">
+                    {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                    {copied ? "Copied!" : "Copy"}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

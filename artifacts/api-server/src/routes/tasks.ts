@@ -106,6 +106,10 @@ router.get("/tasks", async (req, res): Promise<void> => {
   const { status, assigneeId, dateFilter, startDate, endDate } = params.data;
   const conditions = [];
 
+  // Scope to team
+  const teamId = req.user!.teamId;
+  if (teamId != null) conditions.push(eq(tasksTable.teamId, teamId));
+
   // Members only see their own tasks
   if (req.user!.role === "member") {
     conditions.push(eq(tasksTable.assigneeId, req.user!.id));
@@ -148,6 +152,7 @@ router.post("/tasks", requireRole("owner", "deputy"), async (req, res): Promise<
       description: description ?? "",
       assigneeId,
       creatorId: req.user!.id,
+      teamId: req.user!.teamId,
       deadline: new Date(deadline),
       status: "open",
     })
