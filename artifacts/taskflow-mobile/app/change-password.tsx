@@ -20,6 +20,7 @@ export default function ChangePasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -123,9 +124,12 @@ export default function ChangePasswordScreen() {
               placeholderTextColor={colors.mutedForeground}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              secureTextEntry
+              secureTextEntry={!showConfirm}
               autoCapitalize="none"
             />
+            <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
+              <Feather name={showConfirm ? 'eye-off' : 'eye'} size={16} color={colors.mutedForeground} />
+            </TouchableOpacity>
           </View>
         </View>
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, TextInput, Alert, Platform,
+  ActivityIndicator, TextInput, Alert, Platform, Modal, FlatList,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,11 +9,11 @@ import { useLocalSearchParams, router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import {
   useGetTask, useCompleteTask, useApproveTask, useReopenTask,
-  useListMessages, useSendMessage,
+  useListMessages, useSendMessage, useListUsers,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useColors } from '@/hooks/useColors';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, getCurrentToken } from '@/context/AuthContext';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
@@ -31,10 +31,13 @@ export default function TaskDetailScreen() {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
   const [sendingMsg, setSendingMsg] = useState(false);
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [reassignLoading, setReassignLoading] = useState(false);
 
   const taskId = Number(id);
   const { data: task, isLoading, refetch } = useGetTask({ id: taskId });
   const { data: messages, refetch: refetchMessages } = useListMessages({ id: taskId });
+  const { data: users } = useListUsers();
   const { mutateAsync: complete } = useCompleteTask();
   const { mutateAsync: approve } = useApproveTask();
   const { mutateAsync: reopen } = useReopenTask();
@@ -43,6 +46,11 @@ export default function TaskDetailScreen() {
   const isManager = user?.role === 'owner' || user?.role === 'deputy';
   const isAssignee = task?.assigneeId === user?.id;
   const status = task?.status;
+  const reassignStatus = (task as any)?.reassignStatus;
+  const reassignTo = (task as any)?.reassignTo;
+  const reassignToId = (task as any)?.reassignToId;
+
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
 
   async function handleAction(action: 'complete' | 'approve' | 'reopen') {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -50,6 +58,52 @@ export default function TaskDetailScreen() {
       if (action === 'complete') await complete({ id: taskId });
       else if (action === 'approve') await approve({ id: taskId });
       else await reopen({ id: taskId });
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['listTasks'] });
+    } catch (e: any) {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('Error', e.message || 'Action failed');
+    }
+  }
+
+  async function handleRequestReassign(newAssigneeId: number) {
+    setReassignLoading(true);
+    try {
+      const token = getCurrentToken();
+      const res = await fetch(`https://${domain}/api/tasks/${taskId}/reassign-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ requestedAssigneeId: newAssigneeId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).error || 'Request failed');
+      }
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowReassignModal(false);
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ['listTasks'] });
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to request reassignment');
+    } finally {
+      setReassignLoading(false);
+    }
+  }
+
+  async function handleReassignAction(action: 'approve' | 'reject') {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      const token = getCurrentToken();
+      const endpoint = action === 'approve' ? 'reassign-approve' : 'reassign-reject';
+      const res = await fetch(`https://${domain}/api/tasks/${taskId}/${endpoint}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).error || 'Action failed');
+      }
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       refetch();
       queryClient.invalidateQueries({ queryKey: ['listTasks'] });
@@ -90,6 +144,15 @@ export default function TaskDetailScreen() {
   }
 
   const sc = STATUS_CONFIG[task.status] ?? STATUS_CONFIG.open;
+
+  const otherUsers = (users ?? []).filter(
+    (u: any) => u.id !== task.assigneeId && u.id !== user?.id
+  );
+
+  const canRequestReassign =
+    isAssignee &&
+    (status === 'open' || status === 'reopened') &&
+    reassignStatus !== 'pending';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -135,6 +198,18 @@ export default function TaskDetailScreen() {
             </View>
           </View>
 
+          {reassignStatus === 'pending' && reassignTo ? (
+            <View style={[styles.reassignBanner, { backgroundColor: '#F59E0B20', borderColor: '#F59E0B' }]}>
+              <Feather name="refresh-cw" size={14} color="#F59E0B" />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.reassignBannerTitle, { color: '#F59E0B' }]}>Reassignment Requested</Text>
+                <Text style={[styles.reassignBannerSub, { color: colors.mutedForeground }]}>
+                  Pending approval → {reassignTo.fullName}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
           <View style={styles.actions}>
             {(isAssignee || isManager) && status === 'open' ? (
               <TouchableOpacity
@@ -162,6 +237,35 @@ export default function TaskDetailScreen() {
                 <Feather name="refresh-cw" size={16} color="#fff" />
                 <Text style={styles.actionBtnText}>Reopen</Text>
               </TouchableOpacity>
+            ) : null}
+
+            {canRequestReassign ? (
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: '#6366F1' }]}
+                onPress={() => setShowReassignModal(true)}
+              >
+                <Feather name="user-x" size={16} color="#fff" />
+                <Text style={styles.actionBtnText}>Request Reassign</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {isManager && reassignStatus === 'pending' && reassignTo ? (
+              <>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: '#22C55E' }]}
+                  onPress={() => handleReassignAction('approve')}
+                >
+                  <Feather name="user-check" size={16} color="#fff" />
+                  <Text style={styles.actionBtnText}>Approve Reassign</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: '#EF4444' }]}
+                  onPress={() => handleReassignAction('reject')}
+                >
+                  <Feather name="x" size={16} color="#fff" />
+                  <Text style={styles.actionBtnText}>Reject Reassign</Text>
+                </TouchableOpacity>
+              </>
             ) : null}
           </View>
 
@@ -209,6 +313,51 @@ export default function TaskDetailScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAwareScrollViewCompat>
+
+      <Modal visible={showReassignModal} transparent animationType="slide" onRequestClose={() => setShowReassignModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Request Reassignment</Text>
+              <TouchableOpacity onPress={() => setShowReassignModal(false)}>
+                <Feather name="x" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
+              Select a team member to reassign this task to. A manager must approve the request.
+            </Text>
+            {reassignLoading ? (
+              <ActivityIndicator color={colors.primary} style={{ paddingVertical: 30 }} />
+            ) : (
+              <FlatList
+                data={otherUsers}
+                keyExtractor={(item: any) => String(item.id)}
+                style={{ maxHeight: 320 }}
+                renderItem={({ item }: { item: any }) => (
+                  <TouchableOpacity
+                    style={[styles.userRow, { borderBottomColor: colors.border }]}
+                    onPress={() => handleRequestReassign(item.id)}
+                  >
+                    <View style={[styles.userAvatar, { backgroundColor: colors.primary + '20' }]}>
+                      <Text style={[styles.userAvatarText, { color: colors.primary }]}>
+                        {item.fullName?.charAt(0)?.toUpperCase() ?? '?'}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.userName, { color: colors.foreground }]}>{item.fullName}</Text>
+                      <Text style={[styles.userRole, { color: colors.mutedForeground }]}>{item.role}</Text>
+                    </View>
+                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <Text style={[styles.noMessages, { color: colors.mutedForeground }]}>No other team members</Text>
+                }
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -229,6 +378,12 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   metaLabel: { fontSize: 13, fontFamily: 'Inter_400Regular', width: 80 },
   metaValue: { fontSize: 13, fontWeight: '500' as const, fontFamily: 'Inter_500Medium', flex: 1 },
+  reassignBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    borderRadius: 10, borderWidth: 1, padding: 12, marginBottom: 16,
+  },
+  reassignBannerTitle: { fontSize: 13, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  reassignBannerSub: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
   actions: { flexDirection: 'row', gap: 10, marginBottom: 24, flexWrap: 'wrap' },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
   actionBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
@@ -248,4 +403,27 @@ const styles = StyleSheet.create({
   },
   messageInput: { flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular', maxHeight: 100, minHeight: 40 },
   sendBtn: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    borderWidth: 1, borderBottomWidth: 0,
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: 20, borderBottomWidth: 1,
+  },
+  modalTitle: { fontSize: 17, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  modalSubtitle: { fontSize: 13, fontFamily: 'Inter_400Regular', paddingHorizontal: 20, paddingVertical: 12, lineHeight: 20 },
+  userRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1,
+  },
+  userAvatar: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  userAvatarText: { fontSize: 16, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  userName: { fontSize: 15, fontWeight: '500' as const, fontFamily: 'Inter_500Medium' },
+  userRole: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2, textTransform: 'capitalize' },
 });

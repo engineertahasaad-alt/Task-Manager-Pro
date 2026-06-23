@@ -226,6 +226,17 @@ export const ListTasksResponseItem = zod.object({
 }).optional(),
   "deadline": zod.string(),
   "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
   "attachments": zod.array(zod.object({
   "id": zod.number(),
   "taskId": zod.number(),
@@ -287,6 +298,17 @@ export const GetTaskResponse = zod.object({
 }).optional(),
   "deadline": zod.string(),
   "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
   "attachments": zod.array(zod.object({
   "id": zod.number(),
   "taskId": zod.number(),
@@ -343,6 +365,17 @@ export const UpdateTaskResponse = zod.object({
 }).optional(),
   "deadline": zod.string(),
   "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
   "attachments": zod.array(zod.object({
   "id": zod.number(),
   "taskId": zod.number(),
@@ -392,6 +425,17 @@ export const CompleteTaskResponse = zod.object({
 }).optional(),
   "deadline": zod.string(),
   "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
   "attachments": zod.array(zod.object({
   "id": zod.number(),
   "taskId": zod.number(),
@@ -441,6 +485,17 @@ export const ApproveTaskResponse = zod.object({
 }).optional(),
   "deadline": zod.string(),
   "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
   "attachments": zod.array(zod.object({
   "id": zod.number(),
   "taskId": zod.number(),
@@ -490,6 +545,201 @@ export const ReopenTaskResponse = zod.object({
 }).optional(),
   "deadline": zod.string(),
   "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
+  "attachments": zod.array(zod.object({
+  "id": zod.number(),
+  "taskId": zod.number(),
+  "filename": zod.string(),
+  "originalName": zod.string(),
+  "mimeType": zod.string(),
+  "size": zod.number(),
+  "url": zod.string(),
+  "createdAt": zod.string()
+})).optional(),
+  "messageCount": zod.number().optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Assignee requests task reassignment to another user
+ */
+export const RequestReassignmentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RequestReassignmentBody = zod.object({
+  "requestedAssigneeId": zod.number()
+})
+
+export const RequestReassignmentResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "assigneeId": zod.number(),
+  "assignee": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "creatorId": zod.number(),
+  "creator": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "deadline": zod.string(),
+  "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
+  "attachments": zod.array(zod.object({
+  "id": zod.number(),
+  "taskId": zod.number(),
+  "filename": zod.string(),
+  "originalName": zod.string(),
+  "mimeType": zod.string(),
+  "size": zod.number(),
+  "url": zod.string(),
+  "createdAt": zod.string()
+})).optional(),
+  "messageCount": zod.number().optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Manager approves a pending reassignment request
+ */
+export const ApproveReassignmentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ApproveReassignmentResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "assigneeId": zod.number(),
+  "assignee": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "creatorId": zod.number(),
+  "creator": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "deadline": zod.string(),
+  "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
+  "attachments": zod.array(zod.object({
+  "id": zod.number(),
+  "taskId": zod.number(),
+  "filename": zod.string(),
+  "originalName": zod.string(),
+  "mimeType": zod.string(),
+  "size": zod.number(),
+  "url": zod.string(),
+  "createdAt": zod.string()
+})).optional(),
+  "messageCount": zod.number().optional(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Manager rejects a pending reassignment request
+ */
+export const RejectReassignmentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RejectReassignmentResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "assigneeId": zod.number(),
+  "assignee": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "creatorId": zod.number(),
+  "creator": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "deadline": zod.string(),
+  "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
   "attachments": zod.array(zod.object({
   "id": zod.number(),
   "taskId": zod.number(),
@@ -659,6 +909,17 @@ export const GetMyTasksResponse = zod.object({
 }).optional(),
   "deadline": zod.string(),
   "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
   "attachments": zod.array(zod.object({
   "id": zod.number(),
   "taskId": zod.number(),
@@ -699,6 +960,17 @@ export const GetMyTasksResponse = zod.object({
 }).optional(),
   "deadline": zod.string(),
   "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
   "attachments": zod.array(zod.object({
   "id": zod.number(),
   "taskId": zod.number(),
@@ -739,6 +1011,17 @@ export const GetMyTasksResponse = zod.object({
 }).optional(),
   "deadline": zod.string(),
   "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
   "attachments": zod.array(zod.object({
   "id": zod.number(),
   "taskId": zod.number(),
@@ -796,6 +1079,17 @@ export const GetDailyReportResponse = zod.object({
 }).optional(),
   "deadline": zod.string(),
   "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
   "attachments": zod.array(zod.object({
   "id": zod.number(),
   "taskId": zod.number(),
@@ -856,6 +1150,17 @@ export const GetEmployeeReportResponse = zod.object({
 }).optional(),
   "deadline": zod.string(),
   "status": zod.enum(['open', 'completed', 'approved', 'reopened']),
+  "reassignToId": zod.number().nullish(),
+  "reassignTo": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "createdAt": zod.string()
+}).optional(),
+  "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
   "attachments": zod.array(zod.object({
   "id": zod.number(),
   "taskId": zod.number(),

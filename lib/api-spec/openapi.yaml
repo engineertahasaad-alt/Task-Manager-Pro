@@ -406,6 +406,69 @@ paths:
               schema:
                 $ref: "#/components/schemas/Task"
 
+  /tasks/{id}/reassign-request:
+    post:
+      operationId: requestReassignment
+      tags: [tasks]
+      summary: Assignee requests task reassignment to another user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReassignRequestInput"
+      responses:
+        "200":
+          description: Reassignment requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{id}/reassign-approve:
+    patch:
+      operationId: approveReassignment
+      tags: [tasks]
+      summary: Manager approves a pending reassignment request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reassignment approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{id}/reassign-reject:
+    patch:
+      operationId: rejectReassignment
+      tags: [tasks]
+      summary: Manager rejects a pending reassignment request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reassignment rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
   /tasks/{id}/messages:
     get:
       operationId: listMessages
@@ -873,6 +936,13 @@ components:
         status:
           type: string
           enum: [open, completed, approved, reopened]
+        reassignToId:
+          type: ["integer", "null"]
+        reassignTo:
+          $ref: "#/components/schemas/User"
+        reassignStatus:
+          type: ["string", "null"]
+          enum: [pending, approved, rejected, "null"]
         attachments:
           type: array
           items:
@@ -883,6 +953,13 @@ components:
           type: string
         updatedAt:
           type: string
+
+    ReassignRequestInput:
+      type: object
+      required: [requestedAssigneeId]
+      properties:
+        requestedAssigneeId:
+          type: integer
 
     TaskInput:
       type: object

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ActivityIndicator, RefreshControl, Platform,
@@ -9,6 +9,7 @@ import { router } from 'expo-router';
 import { useListTasks } from '@workspace/api-client-react';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '@/context/AuthContext';
+import { useOffline } from '@/context/OfflineContext';
 import { TaskCard } from '@/components/TaskCard';
 
 type Status = 'open' | 'completed' | 'approved' | 'reopened';
@@ -25,12 +26,23 @@ export default function TasksScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { isOnline, cachedTasks, saveCachedTasks } = useOffline();
   const [selectedFilter, setSelectedFilter] = useState<Status | null>(null);
   const isManager = user?.role === 'owner' || user?.role === 'deputy';
 
-  const { data: tasks, isLoading, refetch } = useListTasks(
-    selectedFilter ? { status: selectedFilter } : {}
+  const { data: tasks, isLoading, refetch, isError } = useListTasks(
+    selectedFilter ? { status: selectedFilter } : {},
+    { enabled: isOnline }
   );
+
+  useEffect(() => {
+    if (tasks && tasks.length > 0 && !selectedFilter) {
+      saveCachedTasks(tasks as any[]);
+    }
+  }, [tasks, selectedFilter]);
+
+  const displayTasks = isOnline ? tasks : (cachedTasks ?? []);
+  const showingCached = !isOnline && !!cachedTasks;
 
   const topPadding = Platform.OS === 'web' ? 67 : insets.top + 16;
 
@@ -38,14 +50,23 @@ export default function TasksScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPadding, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <Text style={[styles.title, { color: colors.foreground }]}>Tasks</Text>
-        {isManager ? (
-          <TouchableOpacity
-            style={[styles.createBtn, { backgroundColor: colors.primary }]}
-            onPress={() => router.push('/task/create' as any)}
-          >
-            <Feather name="plus" size={18} color="#fff" />
-          </TouchableOpacity>
-        ) : null}
+        <View style={styles.headerRight}>
+          {showingCached ? (
+            <View style={[styles.cachedBadge, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="clock" size={11} color={colors.mutedForeground} />
+              <Text style={[styles.cachedText, { color: colors.mutedForeground }]}>Cached</Text>
+            </View>
+          ) : null}
+          {isManager ? (
+            <TouchableOpacity
+              style={[styles.createBtn, { backgroundColor: isOnline ? colors.primary : colors.border }]}
+              onPress={() => isOnline && router.push('/task/create' as any)}
+              disabled={!isOnline}
+            >
+              <Feather name="plus" size={18} color="#fff" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
 
       <View style={[styles.filterBar, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
@@ -76,32 +97,40 @@ export default function TasksScreen() {
         />
       </View>
 
-      {isLoading ? (
+      {isLoading && isOnline ? (
         <View style={styles.loadingCenter}>
           <ActivityIndicator color={colors.primary} size="large" />
         </View>
       ) : (
         <FlatList
-          data={tasks ?? []}
+          data={(displayTasks ?? []) as any[]}
           keyExtractor={item => String(item.id)}
           contentContainerStyle={[
             styles.list,
             { paddingBottom: insets.bottom + (Platform.OS === 'web' ? 34 : 0) + 90 },
           ]}
-          refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />}
+          refreshControl={
+            isOnline
+              ? <RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={colors.primary} />
+              : undefined
+          }
           renderItem={({ item }) => (
-            <TaskCard task={item as any} onPress={() => router.push(`/task/${item.id}` as any)} />
+            <TaskCard task={item} onPress={() => router.push(`/task/${item.id}` as any)} />
           )}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Feather name="inbox" size={36} color={colors.mutedForeground} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No tasks</Text>
+              <Feather name={isOnline ? "inbox" : "wifi-off"} size={36} color={colors.mutedForeground} />
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                {isOnline ? 'No tasks' : 'Offline'}
+              </Text>
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                {selectedFilter ? `No ${selectedFilter} tasks found` : 'No tasks assigned yet'}
+                {isOnline
+                  ? (selectedFilter ? `No ${selectedFilter} tasks found` : 'No tasks assigned yet')
+                  : 'No cached tasks available'}
               </Text>
             </View>
           }
-          scrollEnabled={!!(tasks && tasks.length > 0)}
+          scrollEnabled={!!(displayTasks && displayTasks.length > 0)}
         />
       )}
     </View>
@@ -115,6 +144,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1,
   },
   title: { fontSize: 22, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cachedBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20, borderWidth: 1,
+  },
+  cachedText: { fontSize: 11, fontFamily: 'Inter_500Medium', fontWeight: '500' as const },
   createBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   filterBar: { paddingVertical: 10, borderBottomWidth: 1 },
   filterList: { paddingHorizontal: 16, gap: 8 },

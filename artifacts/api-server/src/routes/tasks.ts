@@ -42,6 +42,7 @@ function getDateRange(dateFilter?: string, startDate?: string, endDate?: string)
 async function serializeTask(task: typeof tasksTable.$inferSelect, includeRelations = true) {
   let assignee = undefined;
   let creator = undefined;
+  let reassignTo = undefined;
   let attachments: unknown[] = [];
   let messageCount = 0;
 
@@ -50,6 +51,11 @@ async function serializeTask(task: typeof tasksTable.$inferSelect, includeRelati
     const [creatorRow] = await db.select().from(usersTable).where(eq(usersTable.id, task.creatorId));
     assignee = assigneeRow ? serializeUser(assigneeRow) : undefined;
     creator = creatorRow ? serializeUser(creatorRow) : undefined;
+
+    if (task.reassignToId) {
+      const [reassignRow] = await db.select().from(usersTable).where(eq(usersTable.id, task.reassignToId));
+      reassignTo = reassignRow ? serializeUser(reassignRow) : undefined;
+    }
 
     const attRows = await db.select().from(attachmentsTable).where(eq(attachmentsTable.taskId, task.id));
     attachments = attRows.map((a) => ({
@@ -80,6 +86,9 @@ async function serializeTask(task: typeof tasksTable.$inferSelect, includeRelati
     creator,
     deadline: task.deadline.toISOString(),
     status: task.status,
+    reassignToId: task.reassignToId ?? null,
+    reassignTo: reassignTo ?? null,
+    reassignStatus: task.reassignStatus ?? null,
     attachments,
     messageCount,
     createdAt: task.createdAt.toISOString(),
@@ -288,6 +297,90 @@ router.patch("/tasks/:id/reopen", requireRole("owner", "deputy"), async (req, re
     .returning();
 
   await createNotification(task.assigneeId, "task_reopened", `Your task "${task.title}" has been reopened`, task.id);
+
+  res.json(await serializeTask(updated));
+});
+
+router.post("/tasks/:id/reassign-request", async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid task id" }); return; }
+
+  const requestedAssigneeId = Number(req.body?.requestedAssigneeId);
+  if (!requestedAssigneeId || isNaN(requestedAssigneeId)) {
+    res.status(400).json({ error: "requestedAssigneeId is required and must be an integer" }); return;
+  }
+
+  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
+  if (!task) { res.status(404).json({ error: "Task not found" }); return; }
+
+  if (task.status !== "open" && task.status !== "reopened") {
+    res.status(400).json({ error: "Can only request reassignment for open or reopened tasks" }); return;
+  }
+  if (task.reassignStatus === "pending") {
+    res.status(400).json({ error: "A reassignment request is already pending" }); return;
+  }
+  if (requestedAssigneeId === task.assigneeId) {
+    res.status(400).json({ error: "New assignee must be different from current assignee" }); return;
+  }
+
+  const [newAssignee] = await db.select().from(usersTable).where(eq(usersTable.id, requestedAssigneeId));
+  if (!newAssignee) { res.status(404).json({ error: "Requested assignee not found" }); return; }
+
+  const [updated] = await db
+    .update(tasksTable)
+    .set({ reassignToId: requestedAssigneeId, reassignStatus: "pending" })
+    .where(eq(tasksTable.id, id))
+    .returning();
+
+  const managers = await db.select().from(usersTable).where(inArray(usersTable.role, ["owner", "deputy"]));
+  const requesterName = req.user!.fullName || "Someone";
+  for (const mgr of managers) {
+    await createNotification(mgr.id, "task_assigned", `${requesterName} requested to reassign task "${task.title}" to ${newAssignee.fullName}`, task.id);
+  }
+
+  res.json(await serializeTask(updated));
+});
+
+router.patch("/tasks/:id/reassign-approve", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid task id" }); return; }
+
+  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
+  if (!task) { res.status(404).json({ error: "Task not found" }); return; }
+  if (task.reassignStatus !== "pending" || !task.reassignToId) {
+    res.status(400).json({ error: "No pending reassignment request" }); return;
+  }
+
+  const prevAssigneeId = task.assigneeId;
+  const [updated] = await db
+    .update(tasksTable)
+    .set({ assigneeId: task.reassignToId, reassignToId: null, reassignStatus: null })
+    .where(eq(tasksTable.id, id))
+    .returning();
+
+  await createNotification(task.reassignToId, "task_assigned", `You have been assigned the task: "${task.title}"`, task.id);
+  await createNotification(prevAssigneeId, "task_assigned", `Your reassignment request for "${task.title}" was approved`, task.id);
+
+  res.json(await serializeTask(updated));
+});
+
+router.patch("/tasks/:id/reassign-reject", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid task id" }); return; }
+
+  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
+  if (!task) { res.status(404).json({ error: "Task not found" }); return; }
+  if (task.reassignStatus !== "pending") {
+    res.status(400).json({ error: "No pending reassignment request" }); return;
+  }
+
+  const [updated] = await db
+    .update(tasksTable)
+    .set({ reassignToId: null, reassignStatus: null })
+    .where(eq(tasksTable.id, id))
+    .returning();
+
+  await createNotification(task.assigneeId, "task_assigned", `Your reassignment request for "${task.title}" was rejected`, task.id);
 
   res.json(await serializeTask(updated));
 });

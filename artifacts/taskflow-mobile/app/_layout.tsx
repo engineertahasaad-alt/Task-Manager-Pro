@@ -16,6 +16,8 @@ import { Platform } from "react-native";
 import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth, getCurrentToken } from "@/context/AuthContext";
+import { OfflineProvider } from "@/context/OfflineContext";
+import { OfflineBanner } from "@/components/OfflineBanner";
 
 setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 setAuthTokenGetter(() => getCurrentToken());
@@ -121,14 +123,17 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <KeyboardProvider>
-              <AuthProvider>
-                <PushSetup />
-                <RootLayoutNav />
-              </AuthProvider>
-            </KeyboardProvider>
-          </GestureHandlerRootView>
+          <OfflineProvider>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <KeyboardProvider>
+                <AuthProvider>
+                  <PushSetup />
+                  <OfflineBanner />
+                  <RootLayoutNav />
+                </AuthProvider>
+              </KeyboardProvider>
+            </GestureHandlerRootView>
+          </OfflineProvider>
         </QueryClientProvider>
       </ErrorBoundary>
     </SafeAreaProvider>

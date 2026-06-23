@@ -102,6 +102,19 @@ export const TaskStatus = {
   reopened: 'reopened',
 } as const;
 
+/**
+ * @nullable
+ */
+export type TaskReassignStatus = typeof TaskReassignStatus[keyof typeof TaskReassignStatus] | null;
+
+
+export const TaskReassignStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  null: 'null',
+} as const;
+
 export interface Attachment {
   id: number;
   taskId: number;
@@ -123,10 +136,19 @@ export interface Task {
   creator?: User;
   deadline: string;
   status: TaskStatus;
+  /** @nullable */
+  reassignToId?: number | null;
+  reassignTo?: User;
+  /** @nullable */
+  reassignStatus?: TaskReassignStatus;
   attachments?: Attachment[];
   messageCount?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ReassignRequestInput {
+  requestedAssigneeId: number;
 }
 
 export interface TaskInput {

@@ -13,6 +13,8 @@ export const tasksTable = pgTable("tasks", {
   creatorId: integer("creator_id").notNull().references(() => usersTable.id),
   deadline: timestamp("deadline", { withTimezone: true }).notNull(),
   status: text("status", { enum: ["open", "completed", "approved", "reopened"] }).notNull().default("open"),
+  reassignToId: integer("reassign_to_id").references(() => usersTable.id),
+  reassignStatus: text("reassign_status", { enum: ["pending", "approved", "rejected"] }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

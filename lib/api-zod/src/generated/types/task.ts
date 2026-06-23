@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Attachment } from './attachment';
+import type { TaskReassignStatus } from './taskReassignStatus';
 import type { TaskStatus } from './taskStatus';
 import type { User } from './user';
 
@@ -19,6 +20,11 @@ export interface Task {
   creator?: User;
   deadline: string;
   status: TaskStatus;
+  /** @nullable */
+  reassignToId?: number | null;
+  reassignTo?: User;
+  /** @nullable */
+  reassignStatus?: TaskReassignStatus;
   attachments?: Attachment[];
   messageCount?: number;
   createdAt: string;

@@ -40,6 +40,7 @@ import type {
   Notification,
   PushTokenDeleteInput,
   PushTokenInput,
+  ReassignRequestInput,
   ReportData,
   ResetUserPasswordInput,
   SignupInput,
@@ -1457,6 +1458,218 @@ export const useReopenTask = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getReopenTaskMutationOptions(options));
+    }
+
+export const getRequestReassignmentUrl = (id: number,) => {
+
+
+
+
+  return `/api/tasks/${id}/reassign-request`
+}
+
+/**
+ * @summary Assignee requests task reassignment to another user
+ */
+export const requestReassignment = async (id: number,
+    reassignRequestInput: ReassignRequestInput, options?: RequestInit): Promise<Task> => {
+
+  return customFetch<Task>(getRequestReassignmentUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      reassignRequestInput,)
+  }
+);}
+
+
+
+
+export const getRequestReassignmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestReassignment>>, TError,{id: number;data: BodyType<ReassignRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestReassignment>>, TError,{id: number;data: BodyType<ReassignRequestInput>}, TContext> => {
+
+const mutationKey = ['requestReassignment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestReassignment>>, {id: number;data: BodyType<ReassignRequestInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  requestReassignment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestReassignmentMutationResult = NonNullable<Awaited<ReturnType<typeof requestReassignment>>>
+    export type RequestReassignmentMutationBody = BodyType<ReassignRequestInput>
+    export type RequestReassignmentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Assignee requests task reassignment to another user
+ */
+export const useRequestReassignment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestReassignment>>, TError,{id: number;data: BodyType<ReassignRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestReassignment>>,
+        TError,
+        {id: number;data: BodyType<ReassignRequestInput>},
+        TContext
+      > => {
+      return useMutation(getRequestReassignmentMutationOptions(options));
+    }
+
+export const getApproveReassignmentUrl = (id: number,) => {
+
+
+
+
+  return `/api/tasks/${id}/reassign-approve`
+}
+
+/**
+ * @summary Manager approves a pending reassignment request
+ */
+export const approveReassignment = async (id: number, options?: RequestInit): Promise<Task> => {
+
+  return customFetch<Task>(getApproveReassignmentUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getApproveReassignmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveReassignment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveReassignment>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['approveReassignment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveReassignment>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  approveReassignment(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveReassignmentMutationResult = NonNullable<Awaited<ReturnType<typeof approveReassignment>>>
+
+    export type ApproveReassignmentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Manager approves a pending reassignment request
+ */
+export const useApproveReassignment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveReassignment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveReassignment>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getApproveReassignmentMutationOptions(options));
+    }
+
+export const getRejectReassignmentUrl = (id: number,) => {
+
+
+
+
+  return `/api/tasks/${id}/reassign-reject`
+}
+
+/**
+ * @summary Manager rejects a pending reassignment request
+ */
+export const rejectReassignment = async (id: number, options?: RequestInit): Promise<Task> => {
+
+  return customFetch<Task>(getRejectReassignmentUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+export const getRejectReassignmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectReassignment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectReassignment>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['rejectReassignment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectReassignment>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  rejectReassignment(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectReassignmentMutationResult = NonNullable<Awaited<ReturnType<typeof rejectReassignment>>>
+
+    export type RejectReassignmentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Manager rejects a pending reassignment request
+ */
+export const useRejectReassignment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectReassignment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rejectReassignment>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRejectReassignmentMutationOptions(options));
     }
 
 export const getListMessagesUrl = (id: number,) => {
