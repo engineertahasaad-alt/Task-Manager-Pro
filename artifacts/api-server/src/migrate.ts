@@ -110,6 +110,12 @@ export async function runMigrations() {
       );
     `);
 
+    await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reassign_to_id INTEGER REFERENCES users(id);`);
+    await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reassign_status TEXT CHECK (reassign_status IN ('pending', 'approved', 'rejected'));`);
+    await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reminder_24h_sent BOOLEAN NOT NULL DEFAULT FALSE;`);
+    await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reminder_1h_sent BOOLEAN NOT NULL DEFAULT FALSE;`);
+    await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reminder_10m_sent BOOLEAN NOT NULL DEFAULT FALSE;`);
+
     await initVapidKeys();
 
     logger.info("Migrations completed");

@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { runMigrations } from "./migrate";
+import { startDeadlineReminders } from "./lib/deadlineReminders";
 
 const rawPort = process.env["PORT"];
 
@@ -24,4 +25,5 @@ app.listen(port, async (err) => {
 
   logger.info({ port }, "Server listening");
   await runMigrations();
+  startDeadlineReminders();
 });
