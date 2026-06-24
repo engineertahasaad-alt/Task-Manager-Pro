@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
@@ -47,9 +46,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-2">
           <div className="flex justify-center mb-4">
-            <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
-              <CheckSquare className="h-6 w-6 text-primary" />
-            </div>
+            <img src="/logo.png" alt="Taskaya" className="h-16 w-16 object-contain" />
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight">Welcome to Taskaya</CardTitle>
           <CardDescription>Enter your details to sign in to your account</CardDescription>

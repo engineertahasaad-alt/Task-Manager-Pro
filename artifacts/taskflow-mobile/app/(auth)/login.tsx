@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Alert,
+  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Alert, Image,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -77,9 +77,11 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.logoSection}>
-            <View style={[styles.logoContainer, { backgroundColor: colors.primary + '15' }]}>
-              <Feather name="check-square" size={36} color={colors.primary} />
-            </View>
+            <Image
+              source={require('../../assets/images/icon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
             <Text style={[styles.appName, { color: colors.foreground }]}>Taskaya</Text>
             <Text style={[styles.tagline, { color: colors.mutedForeground }]}>
               Team task management
@@ -181,7 +183,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   keyboardView: { flex: 1 },
   content: { flexGrow: 1, paddingHorizontal: 24 },
-  logoSection: { alignItems: 'center', marginBottom: 40 },
+  logoSection: { alignItems: 'center', marginBottom: 32 },
+  logoImage: { width: 100, height: 100, marginBottom: 12 },
   logoContainer: {
     width: 80, height: 80,
     borderRadius: 20,
