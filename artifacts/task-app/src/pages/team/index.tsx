@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useGetMe, useListUsers, useCreateUser, useUpdateUser, useDisableUser, useResetUserPassword, getListUsersQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { UserPlus, Edit, Ban, CheckCircle, KeyRound } from "lucide-react";
+import { UserPlus, Edit, Ban, CheckCircle, KeyRound, UserCheck, X } from "lucide-react";
 import { Redirect } from "wouter";
 import type { User } from "@workspace/api-client-react";
 
@@ -37,6 +37,49 @@ export default function Team() {
   const queryClient = useQueryClient();
   const { data: currentUser } = useGetMe();
   const { data: users, isLoading } = useListUsers();
+
+  const { data: joinRequests, refetch: refetchJoinRequests } = useQuery({
+    queryKey: ["join-requests"],
+    queryFn: async () => {
+      const token = localStorage.getItem("taskaya_token");
+      const res = await fetch("/api/team/join-requests", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return [] as User[];
+      return res.json() as Promise<User[]>;
+    },
+    enabled: !!(currentUser?.role === "owner" || currentUser?.role === "deputy"),
+    refetchInterval: 30_000,
+  });
+
+  const approveRequest = useMutation({
+    mutationFn: async (id: number) => {
+      const token = localStorage.getItem("taskaya_token");
+      await fetch(`/api/team/join-requests/${id}/approve`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "User approved" });
+      refetchJoinRequests();
+      queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+    },
+  });
+
+  const rejectRequest = useMutation({
+    mutationFn: async (id: number) => {
+      const token = localStorage.getItem("taskaya_token");
+      await fetch(`/api/team/join-requests/${id}/reject`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Request rejected" });
+      refetchJoinRequests();
+    },
+  });
 
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
@@ -123,6 +166,52 @@ export default function Team() {
             <UserPlus className="mr-2 h-4 w-4" /> Add Member
           </Button>
         </div>
+
+        {/* Join Requests */}
+        {joinRequests && joinRequests.length > 0 && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-amber-600" />
+              <h2 className="font-semibold text-amber-900">Join Requests</h2>
+              <span className="ml-auto bg-amber-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                {joinRequests.length}
+              </span>
+            </div>
+            <p className="text-sm text-amber-700">These users signed up with your invite code and are waiting for approval.</p>
+            <div className="divide-y divide-amber-100">
+              {joinRequests.map((u) => (
+                <div key={u.id} className="flex items-center gap-3 py-3">
+                  <div className="h-9 w-9 rounded-full bg-amber-100 flex items-center justify-center font-bold text-amber-700 flex-shrink-0">
+                    {u.fullName.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm">{u.fullName}</p>
+                    <p className="text-xs text-muted-foreground">{u.mobile}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white h-8"
+                      onClick={() => approveRequest.mutate(u.id)}
+                      disabled={approveRequest.isPending}
+                    >
+                      <CheckCircle className="h-3.5 w-3.5 mr-1" /> Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-red-200 text-red-600 hover:bg-red-50 h-8"
+                      onClick={() => rejectRequest.mutate(u.id)}
+                      disabled={rejectRequest.isPending}
+                    >
+                      <X className="h-3.5 w-3.5 mr-1" /> Reject
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Create User Dialog */}
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>

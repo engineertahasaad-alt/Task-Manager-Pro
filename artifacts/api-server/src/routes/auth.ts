@@ -17,6 +17,7 @@ function serializeUser(user: typeof usersTable.$inferSelect) {
     role: user.role,
     isActive: user.isActive,
     mustChangePassword: user.mustChangePassword,
+    pendingApproval: user.pendingApproval,
     createdAt: user.createdAt.toISOString(),
   };
 }
@@ -64,9 +65,10 @@ router.post("/auth/signup", async (req, res): Promise<void> => {
       teamId: team.id,
       role: "member",
       mustChangePassword: false,
+      isActive: false,
+      pendingApproval: true,
     }).returning();
-    const token = signToken(user.id);
-    res.status(201).json({ token, user: serializeUser(user), team: { id: team.id, name: team.name, inviteCode: team.inviteCode } });
+    res.status(201).json({ pendingApproval: true, user: serializeUser(user), team: { id: team.id, name: team.name } });
   } else {
     // Creating a new team — user becomes owner
     const name = teamName?.trim() || `${fullName}'s Team`;

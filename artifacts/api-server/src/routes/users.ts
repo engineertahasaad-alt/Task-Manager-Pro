@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { CreateUserBody, UpdateUserBody, GetUserParams, UpdateUserParams, DisableUserParams, ResetUserPasswordBody, ResetUserPasswordParams } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeUser } from "./auth";
+import { z } from "zod";
 
 const router = Router();
 
@@ -135,6 +136,46 @@ router.patch("/users/:id/disable", requireRole("owner", "deputy"), async (req, r
     .where(eq(usersTable.id, params.data.id))
     .returning();
   res.json(serializeUser(updated));
+});
+
+// Join requests
+router.get("/team/join-requests", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+  const teamId = req.user!.teamId;
+  if (!teamId) { res.json([]); return; }
+  const pending = await db.select().from(usersTable)
+    .where(and(eq(usersTable.teamId, teamId), eq(usersTable.pendingApproval, true)));
+  res.json(pending.map(serializeUser));
+});
+
+router.post("/team/join-requests/:id/approve", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [user] = await db.update(usersTable)
+    .set({ isActive: true, pendingApproval: false })
+    .where(and(eq(usersTable.id, id), eq(usersTable.teamId, req.user!.teamId!)))
+    .returning();
+  if (!user) { res.status(404).json({ error: "Request not found" }); return; }
+  res.json(serializeUser(user));
+});
+
+router.post("/team/join-requests/:id/reject", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [user] = await db.select().from(usersTable)
+    .where(and(eq(usersTable.id, id), eq(usersTable.teamId, req.user!.teamId!)));
+  if (!user) { res.status(404).json({ error: "Request not found" }); return; }
+  await db.delete(usersTable).where(eq(usersTable.id, id));
+  res.json({ message: "Request rejected and user removed" });
+});
+
+// Regenerate invite code (owner only)
+router.post("/team/regenerate-invite", requireRole("owner"), async (req, res): Promise<void> => {
+  const teamId = req.user!.teamId;
+  if (!teamId) { res.status(404).json({ error: "No team" }); return; }
+  const { randomBytes } = await import("crypto");
+  const newCode = randomBytes(4).toString("hex").toUpperCase();
+  const [team] = await db.update(teamsTable).set({ inviteCode: newCode }).where(eq(teamsTable.id, teamId)).returning();
+  res.json({ inviteCode: team.inviteCode });
 });
 
 export default router;

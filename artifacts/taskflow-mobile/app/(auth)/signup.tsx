@@ -51,7 +51,12 @@ export default function SignupScreen() {
         const err = await res.json().catch(() => ({}));
         throw new Error((err as any).error || 'Signup failed');
       }
+      const data = await res.json();
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (data.pendingApproval) {
+        router.replace('/(auth)/pending' as any);
+        return;
+      }
       await login(mobile.trim(), password);
       router.replace('/(tabs)');
     } catch (e: any) {

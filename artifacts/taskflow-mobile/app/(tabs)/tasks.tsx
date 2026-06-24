@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useListTasks } from '@workspace/api-client-react';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '@/context/AuthContext';
@@ -27,8 +27,18 @@ export default function TasksScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { isOnline, cachedTasks, saveCachedTasks } = useOffline();
+  const params = useLocalSearchParams<{ initialFilter?: string }>();
   const [selectedFilter, setSelectedFilter] = useState<Status | null>(null);
   const isManager = user?.role === 'owner' || user?.role === 'deputy';
+
+  useEffect(() => {
+    if (params.initialFilter) {
+      const f = params.initialFilter as Status;
+      if (['open', 'completed', 'approved', 'reopened'].includes(f)) {
+        setSelectedFilter(f);
+      }
+    }
+  }, [params.initialFilter]);
 
   const { data: tasks, isLoading, refetch, isError } = useListTasks(
     selectedFilter ? { status: selectedFilter } : {},

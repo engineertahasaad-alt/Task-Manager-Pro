@@ -11,6 +11,7 @@ export const usersTable = pgTable("users", {
   role: text("role", { enum: ["owner", "deputy", "member"] }).notNull().default("member"),
   isActive: boolean("is_active").notNull().default(true),
   mustChangePassword: boolean("must_change_password").notNull().default(true),
+  pendingApproval: boolean("pending_approval").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

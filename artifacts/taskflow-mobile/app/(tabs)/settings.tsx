@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
-  Alert, ScrollView, Platform,
+  Alert, ScrollView, Platform, Clipboard,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,8 @@ import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
+import { customFetch } from '@workspace/api-client-react';
 
 export default function SettingsScreen() {
   const colors = useColors();
@@ -19,8 +21,23 @@ export default function SettingsScreen() {
   } = useAuth();
 
   const [biometricLoading, setBiometricLoading] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  const { data: teamInfo } = useQuery({
+    queryKey: ['team-info'],
+    queryFn: () => customFetch<{ id: number; name: string; inviteCode: string }>('/api/team/info'),
+    enabled: !!user,
+  });
 
   const topPadding = Platform.OS === 'web' ? 67 : insets.top + 16;
+
+  function handleCopyCode() {
+    if (teamInfo?.inviteCode) {
+      Clipboard.setString(teamInfo.inviteCode);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
+    }
+  }
 
   async function handleBiometricToggle(value: boolean) {
     setBiometricLoading(true);
@@ -80,6 +97,7 @@ export default function SettingsScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Profile Card */}
         <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={[styles.profileAvatar, { backgroundColor: colors.primary + '20' }]}>
             <Text style={[styles.profileAvatarText, { color: colors.primary }]}>
@@ -90,13 +108,40 @@ export default function SettingsScreen() {
             <Text style={[styles.profileName, { color: colors.foreground }]}>{user?.fullName}</Text>
             <Text style={[styles.profileMobile, { color: colors.mutedForeground }]}>{user?.mobile}</Text>
           </View>
-          <View style={[styles.rolePill, { backgroundColor: roleColors[user?.role ?? 'member'] + '20' }]}>
-            <Text style={[styles.roleText, { color: roleColors[user?.role ?? 'member'] }]}>
+          <View style={[styles.rolePill, { backgroundColor: (roleColors[user?.role ?? 'member'] ?? '#64748B') + '20' }]}>
+            <Text style={[styles.roleText, { color: roleColors[user?.role ?? 'member'] ?? '#64748B' }]}>
               {user?.role}
             </Text>
           </View>
         </View>
 
+        {/* Team Invite Code */}
+        {teamInfo && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>TEAM</Text>
+            <View style={[styles.inviteCard, { backgroundColor: '#4F6EF708', borderColor: colors.primary + '30' }]}>
+              <Text style={[styles.inviteTeamName, { color: colors.foreground }]}>{teamInfo.name}</Text>
+              <Text style={[styles.inviteLabel, { color: colors.mutedForeground }]}>Invite Code</Text>
+              <View style={styles.codeRow}>
+                <View style={[styles.codeBox, { backgroundColor: colors.card, borderColor: colors.primary + '40' }]}>
+                  <Text style={[styles.codeText, { color: colors.primary }]}>{teamInfo.inviteCode}</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.copyBtn, { backgroundColor: codeCopied ? '#22C55E' : colors.primary }]}
+                  onPress={handleCopyCode}
+                >
+                  <Feather name={codeCopied ? 'check' : 'copy'} size={15} color="#fff" />
+                  <Text style={styles.copyBtnText}>{codeCopied ? 'Copied!' : 'Copy'}</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.inviteHint, { color: colors.mutedForeground }]}>
+                Share this code so others can join your team
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Biometric */}
         {(Platform.OS !== 'web' && biometricAvailable) ? (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>SECURITY</Text>
@@ -122,6 +167,7 @@ export default function SettingsScreen() {
           </View>
         ) : null}
 
+        {/* Account */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>ACCOUNT</Text>
           <View style={[styles.settingsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -139,6 +185,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Danger Zone */}
         <View style={styles.section}>
           <TouchableOpacity
             style={[styles.logoutBtn, { borderColor: colors.destructive + '40', backgroundColor: colors.destructive + '10' }]}
@@ -150,7 +197,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.version, { color: colors.mutedForeground }]}>Taskaya Mobile v1.0.0</Text>
+        <Text style={[styles.version, { color: colors.mutedForeground }]}>Taskaya v1.0.0</Text>
       </ScrollView>
     </View>
   );
@@ -179,6 +226,15 @@ const styles = StyleSheet.create({
   roleText: { fontSize: 12, fontWeight: '500' as const, fontFamily: 'Inter_500Medium', textTransform: 'capitalize' },
   section: { gap: 6 },
   sectionTitle: { fontSize: 11, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold', letterSpacing: 0.5, paddingHorizontal: 4, marginBottom: 2 },
+  inviteCard: { borderRadius: 12, borderWidth: 1, padding: 14 },
+  inviteTeamName: { fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold', marginBottom: 2 },
+  inviteLabel: { fontSize: 11, fontFamily: 'Inter_400Regular', marginBottom: 8 },
+  codeRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  codeBox: { flex: 1, borderWidth: 1.5, borderRadius: 8, paddingVertical: 8, alignItems: 'center' },
+  codeText: { fontSize: 18, fontWeight: '700' as const, fontFamily: 'Inter_700Bold', letterSpacing: 3 },
+  copyBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  copyBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  inviteHint: { fontSize: 11, fontFamily: 'Inter_400Regular' },
   settingsCard: { borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
   settingRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
