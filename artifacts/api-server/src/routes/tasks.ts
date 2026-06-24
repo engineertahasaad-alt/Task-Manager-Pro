@@ -13,6 +13,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeUser } from "./auth";
+import { sendPushToUser } from "../lib/pushNotifications";
 import path from "path";
 
 const router = Router();
@@ -336,6 +337,7 @@ router.post("/tasks/:id/reassign-request", async (req, res): Promise<void> => {
   const requesterName = req.user!.fullName || "Someone";
   for (const mgr of managers) {
     await createNotification(mgr.id, "task_assigned", `${requesterName} requested to reassign task "${task.title}" to ${newAssignee.fullName}`, task.id);
+    await sendPushToUser(mgr.id, "Reassignment Request", `${requesterName} wants to reassign "${task.title}" to ${newAssignee.fullName}`, task.id);
   }
 
   res.json(await serializeTask(updated));
@@ -360,6 +362,8 @@ router.patch("/tasks/:id/reassign-approve", requireRole("owner", "deputy"), asyn
 
   await createNotification(task.reassignToId, "task_assigned", `You have been assigned the task: "${task.title}"`, task.id);
   await createNotification(prevAssigneeId, "task_assigned", `Your reassignment request for "${task.title}" was approved`, task.id);
+  await sendPushToUser(task.reassignToId, "Task Assigned", `You've been assigned: "${task.title}"`, task.id);
+  await sendPushToUser(prevAssigneeId, "Reassignment Approved", `Your reassignment request for "${task.title}" was approved`, task.id);
 
   res.json(await serializeTask(updated));
 });
@@ -381,6 +385,7 @@ router.patch("/tasks/:id/reassign-reject", requireRole("owner", "deputy"), async
     .returning();
 
   await createNotification(task.assigneeId, "task_assigned", `Your reassignment request for "${task.title}" was rejected`, task.id);
+  await sendPushToUser(task.assigneeId, "Reassignment Rejected", `Your request to reassign "${task.title}" was not approved`, task.id);
 
   res.json(await serializeTask(updated));
 });
