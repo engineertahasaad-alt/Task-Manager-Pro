@@ -1,6 +1,6 @@
 kind = "mobile"
 previewPath = "/mobile/"
-title = "TaskFlow Mobile"
+title = "Taskaya Mobile"
 version = "1.0.0"
 id = "artifacts/taskflow-mobile"
 router = "expo-domain"
@@ -16,11 +16,11 @@ paths = [ "/mobile/" ]
 localPort = 22651
 
 [services.development]
-run = "pnpm --filter @workspace/taskflow-mobile run dev"
+run = "pnpm --filter @workspace/taskaya-mobile run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/taskflow-mobile", "run", "build" ]
-run = [ "pnpm", "--filter", "@workspace/taskflow-mobile", "run", "serve" ]
+build = [ "pnpm", "--filter", "@workspace/taskaya-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/taskaya-mobile", "run", "serve" ]
 
 [services.env]
 PORT = "22651"

@@ -32,8 +32,12 @@ export default function TasksScreen() {
 
   const { data: tasks, isLoading, refetch, isError } = useListTasks(
     selectedFilter ? { status: selectedFilter } : {},
-    { enabled: isOnline }
+    { query: { enabled: isOnline } }
   );
+
+  const pendingReassignments = isManager && isOnline
+    ? (tasks?.filter(t => t.reassignStatus === 'pending') ?? [])
+    : [];
 
   useEffect(() => {
     if (tasks && tasks.length > 0 && !selectedFilter) {
@@ -96,6 +100,27 @@ export default function TasksScreen() {
           )}
         />
       </View>
+
+      {pendingReassignments.length > 0 ? (
+        <TouchableOpacity
+          style={[styles.reassignBanner, { backgroundColor: '#F59E0B18', borderColor: '#F59E0B' }]}
+          onPress={() => router.push(`/task/${pendingReassignments[0].id}` as any)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.reassignBannerIcon}>
+            <Feather name="shuffle" size={16} color="#F59E0B" />
+          </View>
+          <View style={styles.reassignBannerContent}>
+            <Text style={styles.reassignBannerTitle}>
+              {pendingReassignments.length === 1
+                ? '1 reassignment request pending'
+                : `${pendingReassignments.length} reassignment requests pending`}
+            </Text>
+            <Text style={styles.reassignBannerSub}>Tap to review</Text>
+          </View>
+          <Feather name="chevron-right" size={16} color="#F59E0B" />
+        </TouchableOpacity>
+      ) : null}
 
       {isLoading && isOnline ? (
         <View style={styles.loadingCenter}>
@@ -162,4 +187,21 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingVertical: 60, gap: 10 },
   emptyTitle: { fontSize: 17, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
   emptyText: { fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center' },
+  reassignBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginHorizontal: 16, marginTop: 12, marginBottom: 2,
+    borderRadius: 12, borderWidth: 1, padding: 12,
+  },
+  reassignBannerIcon: {
+    width: 34, height: 34, borderRadius: 8,
+    backgroundColor: '#F59E0B22',
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  reassignBannerContent: { flex: 1 },
+  reassignBannerTitle: {
+    fontSize: 13, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold', color: '#92400E',
+  },
+  reassignBannerSub: {
+    fontSize: 11, fontFamily: 'Inter_400Regular', color: '#B45309', marginTop: 1,
+  },
 });

@@ -4,7 +4,8 @@ import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme, Text } from "react-native";
 import { useColors } from "@/hooks/useColors";
-import { useListNotifications } from "@workspace/api-client-react";
+import { useListNotifications, useListTasks } from "@workspace/api-client-react";
+import { useAuth } from "@/context/AuthContext";
 
 function NotifBadge() {
   const { data: notifications } = useListNotifications();
@@ -18,6 +19,21 @@ function NotifBadge() {
   );
 }
 
+function ReassignBadge() {
+  const { user } = useAuth();
+  const isManager = user?.role === 'owner' || user?.role === 'deputy';
+  const { data: tasks } = useListTasks({}, { query: { enabled: isManager } });
+  const pendingCount = isManager
+    ? (tasks?.filter(t => t.reassignStatus === 'pending').length ?? 0)
+    : 0;
+  if (!isManager || !pendingCount) return null;
+  return (
+    <View style={[badgeStyles.badge, badgeStyles.reassignBadge]}>
+      <Text style={badgeStyles.badgeText}>{pendingCount > 99 ? '99+' : String(pendingCount)}</Text>
+    </View>
+  );
+}
+
 const badgeStyles = StyleSheet.create({
   badge: {
     position: 'absolute', top: -4, right: -8,
@@ -25,6 +41,7 @@ const badgeStyles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 3,
   },
+  reassignBadge: { backgroundColor: '#F59E0B' },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
 });
 
@@ -70,7 +87,12 @@ export default function TabLayout() {
         name="tasks"
         options={{
           title: "Tasks",
-          tabBarIcon: ({ color }) => <Feather name="check-square" size={22} color={color} />,
+          tabBarIcon: ({ color }) => (
+            <View>
+              <Feather name="check-square" size={22} color={color} />
+              <ReassignBadge />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
