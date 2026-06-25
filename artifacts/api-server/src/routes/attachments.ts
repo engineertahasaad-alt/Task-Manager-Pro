@@ -3,7 +3,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { db, tasksTable, attachmentsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 
 const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
@@ -25,7 +25,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = [
       "image/jpeg", "image/png", "image/gif", "image/webp",
@@ -52,7 +52,17 @@ router.post("/tasks/:id/attachments", requireAuth, upload.single("file"), async 
     return;
   }
 
-  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, taskId));
+  const groupId = req.user!.groupId;
+  if (groupId == null) {
+    res.status(403).json({ error: "No active group" });
+    return;
+  }
+
+  // Verify task belongs to requester's active group
+  const [task] = await db
+    .select()
+    .from(tasksTable)
+    .where(and(eq(tasksTable.id, taskId), eq(tasksTable.teamId, groupId)));
   if (!task) {
     res.status(404).json({ error: "Task not found" });
     return;
@@ -91,7 +101,6 @@ router.get("/uploads/:filename", (req, res): void => {
   const filename = req.params.filename as string;
   const filePath = path.resolve(uploadsDir, filename);
 
-  // Security: ensure path stays within uploadsDir
   if (!filePath.startsWith(uploadsDir)) {
     res.status(403).json({ error: "Forbidden" });
     return;

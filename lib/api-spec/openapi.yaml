@@ -134,6 +134,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
 
+  /auth/switch-group:
+    patch:
+      operationId: switchGroup
+      tags: [auth]
+      summary: Switch active group context and re-issue token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SwitchGroupInput"
+      responses:
+        "200":
+          description: Group switched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SwitchGroupResult"
+        "403":
+          description: Not a member of this group
+
+  /auth/groups:
+    get:
+      operationId: listGroups
+      tags: [auth]
+      summary: List all groups the current user belongs to
+      responses:
+        "200":
+          description: List of groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupSummary"
+
   /users:
     get:
       operationId: listUsers
@@ -905,6 +941,46 @@ components:
           type: string
         user:
           $ref: "#/components/schemas/User"
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupSummary"
+        activeGroupId:
+          type: ["integer", "null"]
+
+    SwitchGroupInput:
+      type: object
+      required: [groupId]
+      properties:
+        groupId:
+          type: integer
+
+    SwitchGroupResult:
+      type: object
+      required: [token, user, activeGroupId]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+        activeGroupId:
+          type: integer
+        group:
+          $ref: "#/components/schemas/GroupSummary"
+
+    GroupSummary:
+      type: object
+      required: [id, name, role]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        role:
+          type: string
+          enum: [owner, deputy, member]
+        isActive:
+          type: boolean
 
     User:
       type: object
@@ -923,6 +999,10 @@ components:
           type: boolean
         mustChangePassword:
           type: boolean
+        groupId:
+          type: ["integer", "null"]
+        teamId:
+          type: ["integer", "null"]
         createdAt:
           type: string
 

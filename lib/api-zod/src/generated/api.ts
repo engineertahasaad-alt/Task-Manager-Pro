@@ -56,8 +56,17 @@ export const LoginResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
-})
+}),
+  "groups": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean().optional()
+})).optional(),
+  "activeGroupId": zod.number().nullish()
 })
 
 
@@ -84,8 +93,52 @@ export const GetMeResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 })
+
+
+/**
+ * @summary Switch active group context and re-issue token
+ */
+export const SwitchGroupBody = zod.object({
+  "groupId": zod.number()
+})
+
+export const SwitchGroupResponse = zod.object({
+  "token": zod.string(),
+  "user": zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+}),
+  "activeGroupId": zod.number(),
+  "group": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean().optional()
+}).optional()
+})
+
+
+/**
+ * @summary List all groups the current user belongs to
+ */
+export const ListGroupsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean().optional()
+})
+export const ListGroupsResponse = zod.array(ListGroupsResponseItem)
 
 
 /**
@@ -98,6 +151,8 @@ export const ListUsersResponseItem = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
@@ -127,6 +182,8 @@ export const GetUserResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 })
 
@@ -151,6 +208,8 @@ export const UpdateUserResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 })
 
@@ -185,6 +244,8 @@ export const DisableUserResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 })
 
@@ -212,6 +273,8 @@ export const ListTasksResponseItem = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -222,6 +285,8 @@ export const ListTasksResponseItem = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -234,6 +299,8 @@ export const ListTasksResponseItem = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -284,6 +351,8 @@ export const GetTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -294,6 +363,8 @@ export const GetTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -306,6 +377,8 @@ export const GetTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -351,6 +424,8 @@ export const UpdateTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -361,6 +436,8 @@ export const UpdateTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -373,6 +450,8 @@ export const UpdateTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -411,6 +490,8 @@ export const CompleteTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -421,6 +502,8 @@ export const CompleteTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -433,6 +516,8 @@ export const CompleteTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -471,6 +556,8 @@ export const ApproveTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -481,6 +568,8 @@ export const ApproveTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -493,6 +582,8 @@ export const ApproveTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -531,6 +622,8 @@ export const ReopenTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -541,6 +634,8 @@ export const ReopenTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -553,6 +648,8 @@ export const ReopenTaskResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -595,6 +692,8 @@ export const RequestReassignmentResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -605,6 +704,8 @@ export const RequestReassignmentResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -617,6 +718,8 @@ export const RequestReassignmentResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -655,6 +758,8 @@ export const ApproveReassignmentResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -665,6 +770,8 @@ export const ApproveReassignmentResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -677,6 +784,8 @@ export const ApproveReassignmentResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -715,6 +824,8 @@ export const RejectReassignmentResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -725,6 +836,8 @@ export const RejectReassignmentResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -737,6 +850,8 @@ export const RejectReassignmentResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -774,6 +889,8 @@ export const ListMessagesResponseItem = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "content": zod.string(),
@@ -924,6 +1041,8 @@ export const GetMyTasksResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -934,6 +1053,8 @@ export const GetMyTasksResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -946,6 +1067,8 @@ export const GetMyTasksResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -975,6 +1098,8 @@ export const GetMyTasksResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -985,6 +1110,8 @@ export const GetMyTasksResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -997,6 +1124,8 @@ export const GetMyTasksResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -1026,6 +1155,8 @@ export const GetMyTasksResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -1036,6 +1167,8 @@ export const GetMyTasksResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -1048,6 +1181,8 @@ export const GetMyTasksResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -1094,6 +1229,8 @@ export const GetDailyReportResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -1104,6 +1241,8 @@ export const GetDailyReportResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -1116,6 +1255,8 @@ export const GetDailyReportResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -1165,6 +1306,8 @@ export const GetEmployeeReportResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "creatorId": zod.number(),
@@ -1175,6 +1318,8 @@ export const GetEmployeeReportResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "deadline": zod.string(),
@@ -1187,6 +1332,8 @@ export const GetEmployeeReportResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
   "reassignStatus": zod.enum(['pending', 'approved', 'rejected', 'null']).nullish(),
@@ -1289,8 +1436,17 @@ export const VerifyWebAuthnLoginResponse = zod.object({
   "role": zod.enum(['owner', 'deputy', 'member']),
   "isActive": zod.boolean(),
   "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
   "createdAt": zod.string()
-})
+}),
+  "groups": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean().optional()
+})).optional(),
+  "activeGroupId": zod.number().nullish()
 })
 
 

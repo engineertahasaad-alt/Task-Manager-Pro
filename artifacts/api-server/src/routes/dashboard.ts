@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, tasksTable, usersTable } from "@workspace/db";
+import { db, tasksTable, usersTable, groupMembershipsTable } from "@workspace/db";
 import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import { GetDashboardSummaryQueryParams, GetWorkloadByEmployeeQueryParams } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
@@ -36,10 +36,10 @@ router.get("/dashboard/summary", requireRole("owner", "deputy"), async (req, res
   const { dateFilter, startDate, endDate, assigneeId } = params.data;
   const range = getDateRange(dateFilter, startDate, endDate);
   const now = new Date();
-  const teamId = req.user!.teamId;
+  const groupId = req.user!.groupId;
 
   const conditions: any[] = [];
-  if (teamId != null) conditions.push(eq(tasksTable.teamId, teamId));
+  if (groupId != null) conditions.push(eq(tasksTable.teamId, groupId));
   if (assigneeId) conditions.push(eq(tasksTable.assigneeId, assigneeId));
   if (range) {
     conditions.push(gte(tasksTable.createdAt, range.start));
@@ -64,16 +64,36 @@ router.get("/dashboard/workload", requireRole("owner", "deputy"), async (req, re
   const { dateFilter, startDate, endDate } = params.data;
   const range = getDateRange(dateFilter, startDate, endDate);
   const now = new Date();
-  const teamId = req.user!.teamId;
+  const groupId = req.user!.groupId;
 
-  const memberConditions: any[] = [eq(usersTable.role, "member")];
-  if (teamId != null) memberConditions.push(eq(usersTable.teamId, teamId));
+  let memberIds: number[] = [];
+  if (groupId != null) {
+    const memberships = await db
+      .select()
+      .from(groupMembershipsTable)
+      .where(
+        and(
+          eq(groupMembershipsTable.groupId, groupId),
+          eq(groupMembershipsTable.role, "member"),
+          eq(groupMembershipsTable.isActive, true)
+        )
+      );
+    memberIds = memberships.map((m) => m.userId);
+  }
 
-  const members = await db.select().from(usersTable).where(and(...memberConditions));
+  if (memberIds.length === 0) {
+    res.json([]);
+    return;
+  }
+
+  const members = await db
+    .select()
+    .from(usersTable)
+    .where(inArray(usersTable.id, memberIds));
 
   const workload = await Promise.all(members.map(async (user) => {
     const conds: any[] = [eq(tasksTable.assigneeId, user.id)];
-    if (teamId != null) conds.push(eq(tasksTable.teamId, teamId));
+    if (groupId != null) conds.push(eq(tasksTable.teamId, groupId));
     if (range) {
       conds.push(gte(tasksTable.createdAt, range.start));
       conds.push(lte(tasksTable.createdAt, range.end));
@@ -95,7 +115,7 @@ router.get("/dashboard/workload", requireRole("owner", "deputy"), async (req, re
 
 router.get("/dashboard/my-tasks", async (req, res): Promise<void> => {
   const userId = req.user!.id;
-  const teamId = req.user!.teamId;
+  const groupId = req.user!.groupId;
   const now = new Date();
   const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
 
@@ -103,7 +123,7 @@ router.get("/dashboard/my-tasks", async (req, res): Promise<void> => {
     eq(tasksTable.assigneeId, userId),
     inArray(tasksTable.status, ["open", "reopened", "completed"]),
   ];
-  if (teamId != null) conds.push(eq(tasksTable.teamId, teamId));
+  if (groupId != null) conds.push(eq(tasksTable.teamId, groupId));
 
   const allTasks = await db.select().from(tasksTable).where(and(...conds)).orderBy(tasksTable.deadline);
 

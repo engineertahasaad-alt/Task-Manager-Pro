@@ -16,10 +16,10 @@ router.get("/reports/daily", async (req, res): Promise<void> => {
   const start = new Date(dateStr); start.setHours(0, 0, 0, 0);
   const end = new Date(dateStr); end.setHours(23, 59, 59, 999);
   const now = new Date();
-  const teamId = req.user!.teamId;
+  const groupId = req.user!.groupId;
 
   const conds: any[] = [gte(tasksTable.createdAt, start), lte(tasksTable.createdAt, end)];
-  if (teamId != null) conds.push(eq(tasksTable.teamId, teamId));
+  if (groupId != null) conds.push(eq(tasksTable.teamId, groupId));
 
   const tasks = await db.select().from(tasksTable).where(and(...conds)).orderBy(tasksTable.deadline);
   const serialized = await Promise.all(tasks.map(t => serializeTask(t)));
@@ -42,10 +42,10 @@ router.get("/reports/employee", async (req, res): Promise<void> => {
 
   const { employeeId, startDate, endDate } = params.data;
   const now = new Date();
-  const teamId = req.user!.teamId;
+  const groupId = req.user!.groupId;
 
   const conditions: any[] = [];
-  if (teamId != null) conditions.push(eq(tasksTable.teamId, teamId));
+  if (groupId != null) conditions.push(eq(tasksTable.teamId, groupId));
   if (employeeId) conditions.push(eq(tasksTable.assigneeId, employeeId));
   if (startDate) conditions.push(gte(tasksTable.createdAt, new Date(startDate)));
   if (endDate) {

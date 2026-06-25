@@ -14,5 +14,9 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   mustChangePassword: boolean;
+  /** @nullable */
+  groupId?: number | null;
+  /** @nullable */
+  teamId?: number | null;
   createdAt: string;
 }

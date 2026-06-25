@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, notificationsTable, usersTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, notificationsTable, tasksTable, usersTable } from "@workspace/db";
+import { eq, and, or, isNull } from "drizzle-orm";
 import { MarkNotificationReadParams } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 
@@ -8,14 +8,26 @@ const router = Router();
 router.use(requireAuth);
 
 router.get("/notifications", async (req, res): Promise<void> => {
-  const notifications = await db
-    .select()
+  const groupId = req.user!.groupId;
+
+  // Scope notifications to the active group by joining with tasks.
+  // Notifications without a taskId (system-level) are always included.
+  const rows = await db
+    .select({ n: notificationsTable })
     .from(notificationsTable)
-    .where(eq(notificationsTable.userId, req.user!.id))
+    .leftJoin(tasksTable, eq(notificationsTable.taskId, tasksTable.id))
+    .where(
+      and(
+        eq(notificationsTable.userId, req.user!.id),
+        groupId != null
+          ? or(isNull(notificationsTable.taskId), eq(tasksTable.teamId, groupId))
+          : isNull(notificationsTable.taskId)
+      )
+    )
     .orderBy(notificationsTable.createdAt);
 
   res.json(
-    notifications.map((n) => ({
+    rows.map(({ n }) => ({
       id: n.id,
       userId: n.userId,
       type: n.type,

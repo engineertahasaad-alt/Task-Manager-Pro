@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, tasksTable, usersTable, attachmentsTable, messagesTable, notificationsTable } from "@workspace/db";
-import { eq, and, gte, lte, lt, inArray, sql, count } from "drizzle-orm";
+import { db, tasksTable, usersTable, attachmentsTable, messagesTable, notificationsTable, groupMembershipsTable } from "@workspace/db";
+import { eq, and, gte, lte, inArray, count } from "drizzle-orm";
 import {
   ListTasksQueryParams,
   CreateTaskBody,
@@ -14,7 +14,6 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeUser } from "./auth";
 import { sendPushToUser } from "../lib/pushNotifications";
-import path from "path";
 
 const router = Router();
 router.use(requireAuth);
@@ -106,6 +105,16 @@ async function createNotification(
   await db.insert(notificationsTable).values({ userId, type, message, taskId });
 }
 
+/** Load a task that belongs to the requester's active group. Returns null if not found or wrong group. */
+async function loadTaskInGroup(taskId: number, groupId: number | null | undefined) {
+  if (groupId == null) return null;
+  const [task] = await db
+    .select()
+    .from(tasksTable)
+    .where(and(eq(tasksTable.id, taskId), eq(tasksTable.teamId, groupId)));
+  return task ?? null;
+}
+
 router.get("/tasks", async (req, res): Promise<void> => {
   const params = ListTasksQueryParams.safeParse(req.query);
   if (!params.success) {
@@ -116,11 +125,9 @@ router.get("/tasks", async (req, res): Promise<void> => {
   const { status, assigneeId, dateFilter, startDate, endDate } = params.data;
   const conditions = [];
 
-  // Scope to team
-  const teamId = req.user!.teamId;
-  if (teamId != null) conditions.push(eq(tasksTable.teamId, teamId));
+  const groupId = req.user!.groupId;
+  if (groupId != null) conditions.push(eq(tasksTable.teamId, groupId));
 
-  // Members only see their own tasks
   if (req.user!.role === "member") {
     conditions.push(eq(tasksTable.assigneeId, req.user!.id));
   } else if (assigneeId) {
@@ -162,13 +169,12 @@ router.post("/tasks", requireRole("owner", "deputy"), async (req, res): Promise<
       description: description ?? "",
       assigneeId,
       creatorId: req.user!.id,
-      teamId: req.user!.teamId,
+      teamId: req.user!.groupId,
       deadline: new Date(deadline),
       status: "open",
     })
     .returning();
 
-  // Notify assignee
   const [assignee] = await db.select().from(usersTable).where(eq(usersTable.id, assigneeId));
   if (assignee) {
     await createNotification(assigneeId, "task_assigned", `You have been assigned a new task: "${title}"`, task.id);
@@ -184,7 +190,7 @@ router.get("/tasks/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, params.data.id));
+  const task = await loadTaskInGroup(params.data.id, req.user!.groupId);
   if (!task) {
     res.status(404).json({ error: "Task not found" });
     return;
@@ -204,6 +210,9 @@ router.patch("/tasks/:id", requireRole("owner", "deputy"), async (req, res): Pro
     return;
   }
 
+  const groupId = req.user!.groupId;
+  if (groupId == null) { res.status(403).json({ error: "No active group" }); return; }
+
   const updateData: Record<string, unknown> = { ...parsed.data };
   if (parsed.data.deadline) {
     updateData.deadline = new Date(parsed.data.deadline);
@@ -212,7 +221,7 @@ router.patch("/tasks/:id", requireRole("owner", "deputy"), async (req, res): Pro
   const [task] = await db
     .update(tasksTable)
     .set(updateData)
-    .where(eq(tasksTable.id, params.data.id))
+    .where(and(eq(tasksTable.id, params.data.id), eq(tasksTable.teamId, groupId)))
     .returning();
 
   if (!task) {
@@ -228,7 +237,8 @@ router.patch("/tasks/:id/complete", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, params.data.id));
+  const groupId = req.user!.groupId;
+  const task = await loadTaskInGroup(params.data.id, groupId);
   if (!task) {
     res.status(404).json({ error: "Task not found" });
     return;
@@ -241,16 +251,23 @@ router.patch("/tasks/:id/complete", async (req, res): Promise<void> => {
   const [updated] = await db
     .update(tasksTable)
     .set({ status: "completed" })
-    .where(eq(tasksTable.id, params.data.id))
+    .where(and(eq(tasksTable.id, params.data.id), eq(tasksTable.teamId, groupId!)))
     .returning();
 
-  // Notify managers
-  const managers = await db
-    .select()
-    .from(usersTable)
-    .where(inArray(usersTable.role, ["owner", "deputy"]));
-  for (const mgr of managers) {
-    await createNotification(mgr.id, "task_completed", `Task "${task.title}" has been marked as completed`, task.id);
+  if (groupId != null) {
+    const managerMemberships = await db
+      .select()
+      .from(groupMembershipsTable)
+      .where(
+        and(
+          eq(groupMembershipsTable.groupId, groupId),
+          inArray(groupMembershipsTable.role, ["owner", "deputy"]),
+          eq(groupMembershipsTable.isActive, true)
+        )
+      );
+    for (const mem of managerMemberships) {
+      await createNotification(mem.userId, "task_completed", `Task "${task.title}" has been marked as completed`, task.id);
+    }
   }
 
   res.json(await serializeTask(updated));
@@ -262,7 +279,8 @@ router.patch("/tasks/:id/approve", requireRole("owner", "deputy"), async (req, r
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, params.data.id));
+  const groupId = req.user!.groupId;
+  const task = await loadTaskInGroup(params.data.id, groupId);
   if (!task) {
     res.status(404).json({ error: "Task not found" });
     return;
@@ -271,7 +289,7 @@ router.patch("/tasks/:id/approve", requireRole("owner", "deputy"), async (req, r
   const [updated] = await db
     .update(tasksTable)
     .set({ status: "approved" })
-    .where(eq(tasksTable.id, params.data.id))
+    .where(and(eq(tasksTable.id, params.data.id), eq(tasksTable.teamId, groupId!)))
     .returning();
 
   await createNotification(task.assigneeId, "task_approved", `Your task "${task.title}" has been approved`, task.id);
@@ -285,7 +303,8 @@ router.patch("/tasks/:id/reopen", requireRole("owner", "deputy"), async (req, re
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, params.data.id));
+  const groupId = req.user!.groupId;
+  const task = await loadTaskInGroup(params.data.id, groupId);
   if (!task) {
     res.status(404).json({ error: "Task not found" });
     return;
@@ -294,7 +313,7 @@ router.patch("/tasks/:id/reopen", requireRole("owner", "deputy"), async (req, re
   const [updated] = await db
     .update(tasksTable)
     .set({ status: "reopened" })
-    .where(eq(tasksTable.id, params.data.id))
+    .where(and(eq(tasksTable.id, params.data.id), eq(tasksTable.teamId, groupId!)))
     .returning();
 
   await createNotification(task.assigneeId, "task_reopened", `Your task "${task.title}" has been reopened`, task.id);
@@ -311,7 +330,8 @@ router.post("/tasks/:id/reassign-request", async (req, res): Promise<void> => {
     res.status(400).json({ error: "requestedAssigneeId is required and must be an integer" }); return;
   }
 
-  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
+  const groupId = req.user!.groupId;
+  const task = await loadTaskInGroup(id, groupId);
   if (!task) { res.status(404).json({ error: "Task not found" }); return; }
 
   if (task.status !== "open" && task.status !== "reopened") {
@@ -324,20 +344,41 @@ router.post("/tasks/:id/reassign-request", async (req, res): Promise<void> => {
     res.status(400).json({ error: "New assignee must be different from current assignee" }); return;
   }
 
+  // Ensure new assignee is a member of the same group
+  if (groupId != null) {
+    const [newMem] = await db
+      .select()
+      .from(groupMembershipsTable)
+      .where(and(eq(groupMembershipsTable.userId, requestedAssigneeId), eq(groupMembershipsTable.groupId, groupId), eq(groupMembershipsTable.isActive, true)));
+    if (!newMem) { res.status(404).json({ error: "Requested assignee not found in this group" }); return; }
+  }
+
   const [newAssignee] = await db.select().from(usersTable).where(eq(usersTable.id, requestedAssigneeId));
   if (!newAssignee) { res.status(404).json({ error: "Requested assignee not found" }); return; }
 
   const [updated] = await db
     .update(tasksTable)
     .set({ reassignToId: requestedAssigneeId, reassignStatus: "pending" })
-    .where(eq(tasksTable.id, id))
+    .where(and(eq(tasksTable.id, id), eq(tasksTable.teamId, groupId!)))
     .returning();
 
-  const managers = await db.select().from(usersTable).where(inArray(usersTable.role, ["owner", "deputy"]));
   const requesterName = req.user!.fullName || "Someone";
-  for (const mgr of managers) {
-    await createNotification(mgr.id, "task_assigned", `${requesterName} requested to reassign task "${task.title}" to ${newAssignee.fullName}`, task.id);
-    await sendPushToUser(mgr.id, "Reassignment Request", `${requesterName} wants to reassign "${task.title}" to ${newAssignee.fullName}`, task.id);
+
+  if (groupId != null) {
+    const managerMemberships = await db
+      .select()
+      .from(groupMembershipsTable)
+      .where(
+        and(
+          eq(groupMembershipsTable.groupId, groupId),
+          inArray(groupMembershipsTable.role, ["owner", "deputy"]),
+          eq(groupMembershipsTable.isActive, true)
+        )
+      );
+    for (const mem of managerMemberships) {
+      await createNotification(mem.userId, "task_assigned", `${requesterName} requested to reassign task "${task.title}" to ${newAssignee.fullName}`, task.id);
+      await sendPushToUser(mem.userId, "Reassignment Request", `${requesterName} wants to reassign "${task.title}" to ${newAssignee.fullName}`, task.id);
+    }
   }
 
   res.json(await serializeTask(updated));
@@ -347,7 +388,8 @@ router.patch("/tasks/:id/reassign-approve", requireRole("owner", "deputy"), asyn
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid task id" }); return; }
 
-  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
+  const groupId = req.user!.groupId;
+  const task = await loadTaskInGroup(id, groupId);
   if (!task) { res.status(404).json({ error: "Task not found" }); return; }
   if (task.reassignStatus !== "pending" || !task.reassignToId) {
     res.status(400).json({ error: "No pending reassignment request" }); return;
@@ -357,7 +399,7 @@ router.patch("/tasks/:id/reassign-approve", requireRole("owner", "deputy"), asyn
   const [updated] = await db
     .update(tasksTable)
     .set({ assigneeId: task.reassignToId, reassignToId: null, reassignStatus: null })
-    .where(eq(tasksTable.id, id))
+    .where(and(eq(tasksTable.id, id), eq(tasksTable.teamId, groupId!)))
     .returning();
 
   await createNotification(task.reassignToId, "task_assigned", `You have been assigned the task: "${task.title}"`, task.id);
@@ -372,7 +414,8 @@ router.patch("/tasks/:id/reassign-reject", requireRole("owner", "deputy"), async
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid task id" }); return; }
 
-  const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
+  const groupId = req.user!.groupId;
+  const task = await loadTaskInGroup(id, groupId);
   if (!task) { res.status(404).json({ error: "Task not found" }); return; }
   if (task.reassignStatus !== "pending") {
     res.status(400).json({ error: "No pending reassignment request" }); return;
@@ -381,7 +424,7 @@ router.patch("/tasks/:id/reassign-reject", requireRole("owner", "deputy"), async
   const [updated] = await db
     .update(tasksTable)
     .set({ reassignToId: null, reassignStatus: null })
-    .where(eq(tasksTable.id, id))
+    .where(and(eq(tasksTable.id, id), eq(tasksTable.teamId, groupId!)))
     .returning();
 
   await createNotification(task.assigneeId, "task_assigned", `Your reassignment request for "${task.title}" was rejected`, task.id);

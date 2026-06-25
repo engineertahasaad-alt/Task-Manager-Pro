@@ -18,8 +18,10 @@ export default function SettingsScreen() {
   const queryClient = useQueryClient();
   const {
     user, logout, biometricAvailable, biometricEnabled,
-    enableBiometric, disableBiometric,
+    enableBiometric, disableBiometric, groups, activeGroupId, switchGroup,
   } = useAuth();
+
+  const [switchingGroup, setSwitchingGroup] = useState(false);
 
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
@@ -135,6 +137,51 @@ export default function SettingsScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Group Switcher — shown only when user belongs to multiple groups */}
+        {groups.length > 1 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>GROUPS</Text>
+            <View style={[styles.settingsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {groups.map((g, i) => (
+                <TouchableOpacity
+                  key={g.id}
+                  style={[
+                    styles.settingRow,
+                    i < groups.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+                    switchingGroup && { opacity: 0.6 },
+                  ]}
+                  onPress={async () => {
+                    if (g.id === activeGroupId || switchingGroup) return;
+                    setSwitchingGroup(true);
+                    try {
+                      await switchGroup(g.id);
+                      queryClient.clear();
+                      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    } catch {
+                      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                    } finally {
+                      setSwitchingGroup(false);
+                    }
+                  }}
+                  disabled={switchingGroup}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+                    <Feather name="layers" size={18} color={colors.primary} />
+                  </View>
+                  <View style={styles.settingLabel}>
+                    <Text style={[styles.settingName, { color: colors.foreground }]}>{g.name}</Text>
+                    <Text style={[styles.settingDesc, { color: colors.mutedForeground }]}>{g.role}</Text>
+                  </View>
+                  {g.id === activeGroupId && (
+                    <Feather name="check-circle" size={18} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Team Invite Code */}
         {teamInfo && (

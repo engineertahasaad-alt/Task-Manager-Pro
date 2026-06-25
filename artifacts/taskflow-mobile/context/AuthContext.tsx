@@ -25,19 +25,30 @@ export function getCurrentToken(): string | null {
   return _currentToken;
 }
 
-interface User {
+export interface User {
   id: number;
   fullName: string;
   mobile: string;
   role: 'owner' | 'deputy' | 'member';
   isActive: boolean;
   mustChangePassword: boolean;
+  groupId?: number | null;
+  teamId?: number | null;
   createdAt: string;
+}
+
+export interface GroupSummary {
+  id: number;
+  name: string;
+  role: string;
+  isActive?: boolean;
 }
 
 interface AuthContextValue {
   user: User | null;
   token: string | null;
+  groups: GroupSummary[];
+  activeGroupId: number | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   mustChangePassword: boolean;
@@ -47,6 +58,7 @@ interface AuthContextValue {
   login: (mobile: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
+  switchGroup: (groupId: number) => Promise<void>;
   enableBiometric: () => Promise<boolean>;
   disableBiometric: () => Promise<void>;
   loginWithBiometric: () => Promise<boolean>;
@@ -57,6 +69,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [groups, setGroups] = useState<GroupSummary[]>([]);
+  const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
@@ -89,8 +103,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           _currentToken = storedToken;
           setToken(storedToken);
           if (storedUser) {
-            try { setUser(JSON.parse(storedUser)); } catch {}
+            try {
+              const u = JSON.parse(storedUser);
+              setUser(u);
+              setActiveGroupId(u.groupId ?? u.teamId ?? null);
+            } catch {}
           }
+          // Fetch groups in background
+          fetchGroups(storedToken).catch(() => {});
         }
       }
     } catch (e) {
@@ -98,6 +118,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  async function fetchGroups(authToken: string) {
+    try {
+      const domain = process.env.EXPO_PUBLIC_DOMAIN;
+      const res = await fetch(`https://${domain}/api/auth/groups`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGroups(data);
+      }
+    } catch {}
   }
 
   async function login(mobile: string, password: string) {
@@ -112,13 +145,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error((err as any).error || 'Invalid credentials');
     }
     const data = await res.json();
-    await persistAuth(data.token, data.user);
+    await persistAuth(data.token, data.user, data.groups ?? [], data.activeGroupId ?? null);
   }
 
-  async function persistAuth(authToken: string, userData: User) {
+  async function persistAuth(authToken: string, userData: User, groupList: GroupSummary[] = [], groupId: number | null = null) {
     _currentToken = authToken;
     setToken(authToken);
     setUser(userData);
+    setGroups(groupList);
+    setActiveGroupId(groupId ?? userData.groupId ?? userData.teamId ?? null);
     setHasSavedCredentials(true);
     await Promise.all([
       storage.setItemAsync(TOKEN_KEY, authToken),
@@ -130,6 +165,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     _currentToken = null;
     setToken(null);
     setUser(null);
+    setGroups([]);
+    setActiveGroupId(null);
     setHasSavedCredentials(false);
     setBiometricEnabled(false);
     await Promise.all([
@@ -142,6 +179,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   function updateUser(userData: User) {
     setUser(userData);
     storage.setItemAsync(USER_KEY, JSON.stringify(userData)).catch(() => {});
+  }
+
+  async function switchGroup(groupId: number) {
+    if (!_currentToken) return;
+    const domain = process.env.EXPO_PUBLIC_DOMAIN;
+    const res = await fetch(`https://${domain}/api/auth/switch-group`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${_currentToken}` },
+      body: JSON.stringify({ groupId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as any).error || 'Failed to switch group');
+    }
+    const data = await res.json();
+    await persistAuth(data.token, data.user, groups.map(g => ({ ...g, isActive: g.id === groupId })), groupId);
   }
 
   async function enableBiometric(): Promise<boolean> {
@@ -183,8 +236,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         _currentToken = storedToken;
         setToken(storedToken);
         if (storedUser) {
-          try { setUser(JSON.parse(storedUser)); } catch {}
+          try {
+            const u = JSON.parse(storedUser);
+            setUser(u);
+            setActiveGroupId(u.groupId ?? u.teamId ?? null);
+          } catch {}
         }
+        fetchGroups(storedToken).catch(() => {});
         return true;
       }
     } catch {}
@@ -193,12 +251,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, token, isLoading,
+      user, token, groups, activeGroupId, isLoading,
       isAuthenticated: !!token,
       mustChangePassword: user?.mustChangePassword ?? false,
       hasSavedCredentials,
       biometricEnabled, biometricAvailable,
-      login, logout, updateUser,
+      login, logout, updateUser, switchGroup,
       enableBiometric, disableBiometric, loginWithBiometric,
     }}>
       {children}

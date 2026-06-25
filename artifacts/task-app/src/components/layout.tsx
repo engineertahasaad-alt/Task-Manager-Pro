@@ -4,6 +4,7 @@ import { useGetMe } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useNotifications } from "@/hooks/use-notifications";
+import { GroupSwitcher } from "@/components/group-switcher";
 
 function NotificationBadge({ count }: { count: number }) {
   if (count === 0) return null;
@@ -40,9 +41,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen bg-gray-50/50 flex-col md:flex-row">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 flex-col border-r bg-white">
-        <div className="flex h-16 items-center border-b px-6">
+        <div className="flex h-16 items-center border-b px-6 gap-2">
           <CheckSquare className="h-6 w-6 text-primary mr-2" />
           <span className="font-bold text-lg tracking-tight">Taskaya</span>
+        </div>
+        <div className="px-4 py-2 border-b">
+          <GroupSwitcher />
         </div>
         <div className="flex-1 overflow-y-auto py-4">
           <nav className="space-y-1 px-4">

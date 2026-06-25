@@ -8,10 +8,9 @@
 import type { GroupSummary } from './groupSummary';
 import type { User } from './user';
 
-export interface AuthResponse {
+export interface SwitchGroupResult {
   token: string;
   user: User;
-  groups?: GroupSummary[];
-  /** @nullable */
-  activeGroupId?: number | null;
+  activeGroupId: number;
+  group?: GroupSummary;
 }

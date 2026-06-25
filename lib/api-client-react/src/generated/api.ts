@@ -30,6 +30,7 @@ import type {
   GetEmployeeReportParams,
   GetWebAuthnRegisterOptions200,
   GetWorkloadByEmployeeParams,
+  GroupSummary,
   HealthStatus,
   ListTasksParams,
   LoginInput,
@@ -45,6 +46,8 @@ import type {
   ReportData,
   ResetUserPasswordInput,
   SignupInput,
+  SwitchGroupInput,
+  SwitchGroupResult,
   Task,
   TaskInput,
   TaskUpdate,
@@ -496,6 +499,154 @@ export function useGetMe<TData = Awaited<ReturnType<typeof getMe>>, TError = Err
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetMeQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSwitchGroupUrl = () => {
+
+
+
+
+  return `/api/auth/switch-group`
+}
+
+/**
+ * @summary Switch active group context and re-issue token
+ */
+export const switchGroup = async (switchGroupInput: SwitchGroupInput, options?: RequestInit): Promise<SwitchGroupResult> => {
+
+  return customFetch<SwitchGroupResult>(getSwitchGroupUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      switchGroupInput,)
+  }
+);}
+
+
+
+
+export const getSwitchGroupMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof switchGroup>>, TError,{data: BodyType<SwitchGroupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof switchGroup>>, TError,{data: BodyType<SwitchGroupInput>}, TContext> => {
+
+const mutationKey = ['switchGroup'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof switchGroup>>, {data: BodyType<SwitchGroupInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  switchGroup(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SwitchGroupMutationResult = NonNullable<Awaited<ReturnType<typeof switchGroup>>>
+    export type SwitchGroupMutationBody = BodyType<SwitchGroupInput>
+    export type SwitchGroupMutationError = ErrorType<void>
+
+    /**
+ * @summary Switch active group context and re-issue token
+ */
+export const useSwitchGroup = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof switchGroup>>, TError,{data: BodyType<SwitchGroupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof switchGroup>>,
+        TError,
+        {data: BodyType<SwitchGroupInput>},
+        TContext
+      > => {
+      return useMutation(getSwitchGroupMutationOptions(options));
+    }
+
+export const getListGroupsUrl = () => {
+
+
+
+
+  return `/api/auth/groups`
+}
+
+/**
+ * @summary List all groups the current user belongs to
+ */
+export const listGroups = async ( options?: RequestInit): Promise<GroupSummary[]> => {
+
+  return customFetch<GroupSummary[]>(getListGroupsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListGroupsQueryKey = () => {
+    return [
+    `/api/auth/groups`
+    ] as const;
+    }
+
+
+export const getListGroupsQueryOptions = <TData = Awaited<ReturnType<typeof listGroups>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGroups>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListGroupsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listGroups>>> = ({ signal }) => listGroups({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listGroups>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListGroupsQueryResult = NonNullable<Awaited<ReturnType<typeof listGroups>>>
+export type ListGroupsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all groups the current user belongs to
+ */
+
+export function useListGroups<TData = Awaited<ReturnType<typeof listGroups>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGroups>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListGroupsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

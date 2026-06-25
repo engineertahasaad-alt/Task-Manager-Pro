@@ -1,5 +1,6 @@
 export * from "./teams";
 export * from "./users";
+export * from "./group_memberships";
 export * from "./tasks";
 export * from "./attachments";
 export * from "./messages";

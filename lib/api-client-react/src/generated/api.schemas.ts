@@ -57,12 +57,46 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   mustChangePassword: boolean;
+  /** @nullable */
+  groupId?: number | null;
+  /** @nullable */
+  teamId?: number | null;
   createdAt: string;
+}
+
+export type GroupSummaryRole = typeof GroupSummaryRole[keyof typeof GroupSummaryRole];
+
+
+export const GroupSummaryRole = {
+  owner: 'owner',
+  deputy: 'deputy',
+  member: 'member',
+} as const;
+
+export interface GroupSummary {
+  id: number;
+  name: string;
+  role: GroupSummaryRole;
+  isActive?: boolean;
 }
 
 export interface AuthResponse {
   token: string;
   user: User;
+  groups?: GroupSummary[];
+  /** @nullable */
+  activeGroupId?: number | null;
+}
+
+export interface SwitchGroupInput {
+  groupId: number;
+}
+
+export interface SwitchGroupResult {
+  token: string;
+  user: User;
+  activeGroupId: number;
+  group?: GroupSummary;
 }
 
 export interface ResetUserPasswordInput {

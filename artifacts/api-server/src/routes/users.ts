@@ -1,28 +1,43 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, teamsTable } from "@workspace/db";
+import { db, usersTable, teamsTable, groupMembershipsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { CreateUserBody, UpdateUserBody, GetUserParams, UpdateUserParams, DisableUserParams, ResetUserPasswordBody, ResetUserPasswordParams } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeUser } from "./auth";
-import { z } from "zod";
 
 const router = Router();
 
 router.use(requireAuth);
 
 router.get("/users", async (req, res): Promise<void> => {
-  const teamId = req.user!.teamId;
-  const users = teamId != null
-    ? await db.select().from(usersTable).where(eq(usersTable.teamId, teamId)).orderBy(usersTable.fullName)
-    : await db.select().from(usersTable).orderBy(usersTable.fullName);
-  res.json(users.map(serializeUser));
+  const groupId = req.user!.groupId;
+  if (groupId == null) {
+    res.json([]);
+    return;
+  }
+  const memberships = await db
+    .select()
+    .from(groupMembershipsTable)
+    .where(eq(groupMembershipsTable.groupId, groupId));
+
+  const userIds = memberships.map((m) => m.userId);
+  if (userIds.length === 0) { res.json([]); return; }
+
+  const users = await db.select().from(usersTable).orderBy(usersTable.fullName);
+  const filtered = users.filter((u) => userIds.includes(u.id));
+  const membershipMap = new Map(memberships.map((m) => [m.userId, m]));
+
+  res.json(filtered.map((u) => {
+    const mem = membershipMap.get(u.id);
+    return serializeUser(u, mem?.role, groupId);
+  }));
 });
 
 router.get("/team/info", async (req, res): Promise<void> => {
-  const teamId = req.user!.teamId;
-  if (!teamId) { res.status(404).json({ error: "No team" }); return; }
-  const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, teamId));
+  const groupId = req.user!.groupId;
+  if (!groupId) { res.status(404).json({ error: "No team" }); return; }
+  const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, groupId));
   if (!team) { res.status(404).json({ error: "Team not found" }); return; }
   res.json({ id: team.id, name: team.name, inviteCode: team.inviteCode });
 });
@@ -34,19 +49,22 @@ router.post("/users", requireRole("owner", "deputy"), async (req, res): Promise<
     return;
   }
   const { fullName, mobile, role } = parsed.data;
+  const groupId = req.user!.groupId;
 
-  // Check if mobile already exists
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.mobile, mobile));
   if (existing) {
     res.status(400).json({ error: "Mobile number already exists" });
     return;
   }
 
-  // Only one deputy allowed
-  if (role === "deputy") {
-    const [existingDeputy] = await db.select().from(usersTable).where(eq(usersTable.role, "deputy"));
-    if (existingDeputy) {
-      res.status(400).json({ error: "A deputy already exists" });
+  // Only one deputy allowed per group
+  if (role === "deputy" && groupId != null) {
+    const deputies = await db
+      .select()
+      .from(groupMembershipsTable)
+      .where(and(eq(groupMembershipsTable.groupId, groupId), eq(groupMembershipsTable.role, "deputy")));
+    if (deputies.length > 0) {
+      res.status(400).json({ error: "A deputy already exists in this group" });
       return;
     }
   }
@@ -54,9 +72,20 @@ router.post("/users", requireRole("owner", "deputy"), async (req, res): Promise<
   const passwordHash = await bcrypt.hash("123", 10);
   const [user] = await db
     .insert(usersTable)
-    .values({ fullName, mobile, role, passwordHash, mustChangePassword: true, teamId: req.user!.teamId })
+    .values({ fullName, mobile, role, passwordHash, mustChangePassword: true, teamId: groupId })
     .returning();
-  res.status(201).json(serializeUser(user));
+
+  if (groupId != null) {
+    await db.insert(groupMembershipsTable).values({
+      userId: user.id,
+      groupId,
+      role,
+      isActive: true,
+      pendingApproval: false,
+    });
+  }
+
+  res.status(201).json(serializeUser(user, role, groupId));
 });
 
 router.get("/users/:id", async (req, res): Promise<void> => {
@@ -65,12 +94,24 @@ router.get("/users/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const groupId = req.user!.groupId;
+  if (groupId == null) { res.status(403).json({ error: "No active group" }); return; }
+
+  // Verify target user is a member of the requester's active group
+  const [mem] = await db.select().from(groupMembershipsTable).where(
+    and(eq(groupMembershipsTable.userId, params.data.id), eq(groupMembershipsTable.groupId, groupId))
+  );
+  if (!mem) {
+    res.status(404).json({ error: "User not found in this group" });
+    return;
+  }
+
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, params.data.id));
   if (!user) {
     res.status(404).json({ error: "User not found" });
     return;
   }
-  res.json(serializeUser(user));
+  res.json(serializeUser(user, mem.role, groupId));
 });
 
 router.patch("/users/:id", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
@@ -85,9 +126,24 @@ router.patch("/users/:id", requireRole("owner", "deputy"), async (req, res): Pro
     return;
   }
 
+  const groupId = req.user!.groupId;
+  if (groupId == null) { res.status(403).json({ error: "No active group" }); return; }
+
+  // Verify target user is a member of the requester's active group
+  const [existingMem] = await db.select().from(groupMembershipsTable).where(
+    and(eq(groupMembershipsTable.userId, params.data.id), eq(groupMembershipsTable.groupId, groupId))
+  );
+  if (!existingMem) {
+    res.status(404).json({ error: "User not found in this group" });
+    return;
+  }
+
+  const updateData: any = { ...parsed.data };
+  delete updateData.role;
+
   const [user] = await db
     .update(usersTable)
-    .set(parsed.data)
+    .set(updateData)
     .where(eq(usersTable.id, params.data.id))
     .returning();
 
@@ -95,7 +151,28 @@ router.patch("/users/:id", requireRole("owner", "deputy"), async (req, res): Pro
     res.status(404).json({ error: "User not found" });
     return;
   }
-  res.json(serializeUser(user));
+
+  if (parsed.data.role && groupId != null) {
+    await db
+      .update(groupMembershipsTable)
+      .set({ role: parsed.data.role })
+      .where(
+        and(
+          eq(groupMembershipsTable.userId, params.data.id),
+          eq(groupMembershipsTable.groupId, groupId)
+        )
+      );
+  }
+
+  let role = user.role;
+  if (groupId != null) {
+    const [mem] = await db.select().from(groupMembershipsTable).where(
+      and(eq(groupMembershipsTable.userId, user.id), eq(groupMembershipsTable.groupId, groupId))
+    );
+    if (mem) role = mem.role;
+  }
+
+  res.json(serializeUser(user, role, groupId));
 });
 
 router.post("/users/:id/reset-password", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
@@ -109,6 +186,18 @@ router.post("/users/:id/reset-password", requireRole("owner", "deputy"), async (
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const groupId = req.user!.groupId;
+  if (groupId == null) { res.status(403).json({ error: "No active group" }); return; }
+
+  // Verify target user is a member of the requester's active group
+  const [mem] = await db.select().from(groupMembershipsTable).where(
+    and(eq(groupMembershipsTable.userId, params.data.id), eq(groupMembershipsTable.groupId, groupId))
+  );
+  if (!mem) {
+    res.status(404).json({ error: "User not found in this group" });
+    return;
+  }
+
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, params.data.id));
   if (!user) {
     res.status(404).json({ error: "User not found" });
@@ -125,6 +214,27 @@ router.patch("/users/:id/disable", requireRole("owner", "deputy"), async (req, r
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const groupId = req.user!.groupId;
+
+  if (groupId != null) {
+    const [mem] = await db
+      .select()
+      .from(groupMembershipsTable)
+      .where(and(eq(groupMembershipsTable.userId, params.data.id), eq(groupMembershipsTable.groupId, groupId)));
+    if (!mem) {
+      res.status(404).json({ error: "User not found in this group" });
+      return;
+    }
+    const [updated] = await db
+      .update(groupMembershipsTable)
+      .set({ isActive: !mem.isActive })
+      .where(and(eq(groupMembershipsTable.userId, params.data.id), eq(groupMembershipsTable.groupId, groupId)))
+      .returning();
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, params.data.id));
+    res.json(serializeUser(user, updated.role, groupId));
+    return;
+  }
+
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, params.data.id));
   if (!user) {
     res.status(404).json({ error: "User not found" });
@@ -135,46 +245,84 @@ router.patch("/users/:id/disable", requireRole("owner", "deputy"), async (req, r
     .set({ isActive: !user.isActive })
     .where(eq(usersTable.id, params.data.id))
     .returning();
-  res.json(serializeUser(updated));
+  res.json(serializeUser(updated, undefined, groupId));
 });
 
 // Join requests
 router.get("/team/join-requests", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
-  const teamId = req.user!.teamId;
-  if (!teamId) { res.json([]); return; }
-  const pending = await db.select().from(usersTable)
-    .where(and(eq(usersTable.teamId, teamId), eq(usersTable.pendingApproval, true)));
-  res.json(pending.map(serializeUser));
+  const groupId = req.user!.groupId;
+  if (!groupId) { res.json([]); return; }
+  const pending = await db
+    .select()
+    .from(groupMembershipsTable)
+    .where(and(eq(groupMembershipsTable.groupId, groupId), eq(groupMembershipsTable.pendingApproval, true)));
+
+  const result = await Promise.all(pending.map(async (m) => {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, m.userId));
+    return user ? serializeUser(user, m.role, groupId) : null;
+  }));
+
+  res.json(result.filter(Boolean));
 });
 
 router.post("/team/join-requests/:id/approve", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const [user] = await db.update(usersTable)
+  const groupId = req.user!.groupId;
+  if (!groupId) { res.status(400).json({ error: "No active group" }); return; }
+
+  const [mem] = await db
+    .update(groupMembershipsTable)
     .set({ isActive: true, pendingApproval: false })
-    .where(and(eq(usersTable.id, id), eq(usersTable.teamId, req.user!.teamId!)))
+    .where(and(eq(groupMembershipsTable.userId, id), eq(groupMembershipsTable.groupId, groupId)))
     .returning();
-  if (!user) { res.status(404).json({ error: "Request not found" }); return; }
-  res.json(serializeUser(user));
+  if (!mem) { res.status(404).json({ error: "Request not found" }); return; }
+
+  // Also activate user account if it was pending
+  await db
+    .update(usersTable)
+    .set({ isActive: true, pendingApproval: false })
+    .where(eq(usersTable.id, id));
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+  res.json(serializeUser(user, mem.role, groupId));
 });
 
 router.post("/team/join-requests/:id/reject", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const [user] = await db.select().from(usersTable)
-    .where(and(eq(usersTable.id, id), eq(usersTable.teamId, req.user!.teamId!)));
-  if (!user) { res.status(404).json({ error: "Request not found" }); return; }
-  await db.delete(usersTable).where(eq(usersTable.id, id));
-  res.json({ message: "Request rejected and user removed" });
+  const groupId = req.user!.groupId;
+  if (!groupId) { res.status(400).json({ error: "No active group" }); return; }
+
+  const [mem] = await db
+    .select()
+    .from(groupMembershipsTable)
+    .where(and(eq(groupMembershipsTable.userId, id), eq(groupMembershipsTable.groupId, groupId)));
+  if (!mem) { res.status(404).json({ error: "Request not found" }); return; }
+
+  await db.delete(groupMembershipsTable).where(
+    and(eq(groupMembershipsTable.userId, id), eq(groupMembershipsTable.groupId, groupId))
+  );
+
+  // Check if user has other memberships; if not, soft-delete
+  const otherMemberships = await db
+    .select()
+    .from(groupMembershipsTable)
+    .where(eq(groupMembershipsTable.userId, id));
+  if (otherMemberships.length === 0) {
+    await db.delete(usersTable).where(eq(usersTable.id, id));
+  }
+
+  res.json({ message: "Request rejected" });
 });
 
 // Regenerate invite code (owner only)
 router.post("/team/regenerate-invite", requireRole("owner"), async (req, res): Promise<void> => {
-  const teamId = req.user!.teamId;
-  if (!teamId) { res.status(404).json({ error: "No team" }); return; }
+  const groupId = req.user!.groupId;
+  if (!groupId) { res.status(404).json({ error: "No team" }); return; }
   const { randomBytes } = await import("crypto");
   const newCode = randomBytes(4).toString("hex").toUpperCase();
-  const [team] = await db.update(teamsTable).set({ inviteCode: newCode }).where(eq(teamsTable.id, teamId)).returning();
+  const [team] = await db.update(teamsTable).set({ inviteCode: newCode }).where(eq(teamsTable.id, groupId)).returning();
   res.json({ inviteCode: team.inviteCode });
 });
 

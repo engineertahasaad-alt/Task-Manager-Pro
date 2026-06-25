@@ -122,6 +122,35 @@ export async function runMigrations() {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_reminder_10m BOOLEAN NOT NULL DEFAULT TRUE;`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_overdue BOOLEAN NOT NULL DEFAULT TRUE;`);
 
+    // Phase 2: group_memberships junction table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS group_memberships (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        group_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+        role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'deputy', 'member')),
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        pending_approval BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (user_id, group_id)
+      );
+    `);
+
+    // Migrate existing users: insert a group_memberships row for every user that has a team_id
+    await pool.query(`
+      INSERT INTO group_memberships (user_id, group_id, role, is_active, pending_approval, created_at)
+      SELECT
+        u.id,
+        u.team_id,
+        u.role,
+        u.is_active,
+        u.pending_approval,
+        u.created_at
+      FROM users u
+      WHERE u.team_id IS NOT NULL
+      ON CONFLICT (user_id, group_id) DO NOTHING;
+    `);
+
     await initVapidKeys();
 
     logger.info("Migrations completed");
