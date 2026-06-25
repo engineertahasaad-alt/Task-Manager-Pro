@@ -63,6 +63,41 @@ function PushSetup() {
     setupPushNotifications();
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+
+    let responseSubscription: { remove: () => void } | null = null;
+
+    (async () => {
+      const Notifications = await import("expo-notifications");
+
+      // Handle tap on a notification while the app is running or in background
+      responseSubscription = Notifications.addNotificationResponseReceivedListener(
+        (response) => {
+          const taskId = response.notification.request.content.data?.taskId;
+          if (taskId) {
+            router.push(`/task/${taskId}` as any);
+          }
+        }
+      );
+
+      // Handle tap that cold-launched the app
+      const initialResponse = await Notifications.getLastNotificationResponseAsync();
+      if (initialResponse) {
+        const taskId = initialResponse.notification.request.content.data?.taskId;
+        if (taskId) {
+          setTimeout(() => {
+            router.push(`/task/${taskId}` as any);
+          }, 500);
+        }
+      }
+    })();
+
+    return () => {
+      responseSubscription?.remove();
+    };
+  }, []);
+
   async function setupPushNotifications() {
     try {
       const Notifications = await import("expo-notifications");
