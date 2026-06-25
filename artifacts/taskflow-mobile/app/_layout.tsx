@@ -5,15 +5,15 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Stack, router, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Platform } from "react-native";
-import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
+import { AppState, Platform } from "react-native";
+import { setBaseUrl, setAuthTokenGetter, useListNotifications } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth, getCurrentToken } from "@/context/AuthContext";
 import { OfflineProvider } from "@/context/OfflineContext";
@@ -53,6 +53,39 @@ function RootLayoutNav() {
       <Stack.Screen name="change-password" options={{ headerShown: false, presentation: "modal" }} />
     </Stack>
   );
+}
+
+function AppBadgeSync() {
+  const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: notifications } = useListNotifications({
+    query: { enabled: isAuthenticated && Platform.OS !== "web", refetchInterval: 60_000 },
+  });
+
+  // Sync unread count to the OS app icon badge
+  useEffect(() => {
+    if (Platform.OS === "web" || !isAuthenticated) return;
+    const unread = notifications?.filter((n) => !n.isRead).length ?? 0;
+    (async () => {
+      try {
+        const Notifications = await import("expo-notifications");
+        await Notifications.setBadgeCountAsync(unread);
+      } catch {}
+    })();
+  }, [notifications, isAuthenticated]);
+
+  // Refresh notification count whenever the app comes back to foreground
+  useEffect(() => {
+    if (Platform.OS === "web" || !isAuthenticated) return;
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        queryClient.invalidateQueries({ queryKey: ["listNotifications"] });
+      }
+    });
+    return () => sub.remove();
+  }, [isAuthenticated, queryClient]);
+
+  return null;
 }
 
 function PushSetup() {
@@ -162,6 +195,7 @@ export default function RootLayout() {
             <GestureHandlerRootView style={{ flex: 1 }}>
               <KeyboardProvider>
                 <AuthProvider>
+                  <AppBadgeSync />
                   <PushSetup />
                   <OfflineBanner />
                   <RootLayoutNav />
