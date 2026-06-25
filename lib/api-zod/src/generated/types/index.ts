@@ -29,6 +29,7 @@ export * from './messageInput';
 export * from './messageResponse';
 export * from './myTasksSummary';
 export * from './notification';
+export * from './notificationPreferences';
 export * from './notificationType';
 export * from './pushTokenDeleteInput';
 export * from './pushTokenInput';

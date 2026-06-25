@@ -117,6 +117,10 @@ export async function runMigrations() {
     await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reminder_10m_sent BOOLEAN NOT NULL DEFAULT FALSE;`);
     await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS overdue_reminder_sent BOOLEAN NOT NULL DEFAULT FALSE;`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_approval BOOLEAN NOT NULL DEFAULT FALSE;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_reminder_24h BOOLEAN NOT NULL DEFAULT TRUE;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_reminder_1h BOOLEAN NOT NULL DEFAULT TRUE;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_reminder_10m BOOLEAN NOT NULL DEFAULT TRUE;`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_overdue BOOLEAN NOT NULL DEFAULT TRUE;`);
 
     await initVapidKeys();
 

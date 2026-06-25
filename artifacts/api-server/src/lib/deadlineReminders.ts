@@ -1,4 +1,4 @@
-import { db, tasksTable, notificationsTable } from "@workspace/db";
+import { db, tasksTable, notificationsTable, usersTable } from "@workspace/db";
 import { eq, and, gte, lte, lt, inArray } from "drizzle-orm";
 import { sendPushToUser } from "./pushNotifications";
 import { logger } from "./logger";
@@ -9,6 +9,7 @@ async function checkAndSend(
   windowMs: number,
   bufferMs: number,
   sentCol: "reminder24hSent" | "reminder1hSent" | "reminder10mSent",
+  prefCol: "notifyReminder24h" | "notifyReminder1h" | "notifyReminder10m",
   label: string
 ) {
   const now = new Date();
@@ -16,8 +17,15 @@ async function checkAndSend(
   const windowEnd = new Date(now.getTime() + windowMs + bufferMs);
 
   const tasks = await db
-    .select()
+    .select({
+      id: tasksTable.id,
+      title: tasksTable.title,
+      deadline: tasksTable.deadline,
+      assigneeId: tasksTable.assigneeId,
+      pref: usersTable[prefCol],
+    })
     .from(tasksTable)
+    .innerJoin(usersTable, eq(usersTable.id, tasksTable.assigneeId))
     .where(
       and(
         inArray(tasksTable.status, [...ACTIVE_STATUSES]),
@@ -29,6 +37,11 @@ async function checkAndSend(
 
   for (const task of tasks) {
     try {
+      // Mark sent regardless so we don't retry; skip push if user opted out
+      await db.update(tasksTable).set({ [sentCol]: true } as any).where(eq(tasksTable.id, task.id));
+
+      if (!task.pref) continue;
+
       const deadlineStr = new Date(task.deadline).toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
@@ -42,7 +55,6 @@ async function checkAndSend(
         message: `Your task "${task.title}" is due in ${label}`,
         taskId: task.id,
       });
-      await db.update(tasksTable).set({ [sentCol]: true } as any).where(eq(tasksTable.id, task.id));
 
       logger.info({ taskId: task.id, label }, "Deadline reminder sent");
     } catch (err) {
@@ -55,8 +67,15 @@ async function checkOverdue() {
   const now = new Date();
 
   const tasks = await db
-    .select()
+    .select({
+      id: tasksTable.id,
+      title: tasksTable.title,
+      deadline: tasksTable.deadline,
+      assigneeId: tasksTable.assigneeId,
+      pref: usersTable.notifyOverdue,
+    })
     .from(tasksTable)
+    .innerJoin(usersTable, eq(usersTable.id, tasksTable.assigneeId))
     .where(
       and(
         inArray(tasksTable.status, [...ACTIVE_STATUSES]),
@@ -67,6 +86,10 @@ async function checkOverdue() {
 
   for (const task of tasks) {
     try {
+      await db.update(tasksTable).set({ overdueReminderSent: true }).where(eq(tasksTable.id, task.id));
+
+      if (!task.pref) continue;
+
       const dateStr = new Date(task.deadline).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
@@ -82,7 +105,6 @@ async function checkOverdue() {
         message: `Your task "${task.title}" is overdue — please complete or request reassignment`,
         taskId: task.id,
       });
-      await db.update(tasksTable).set({ overdueReminderSent: true }).where(eq(tasksTable.id, task.id));
 
       logger.info({ taskId: task.id }, "Overdue reminder sent");
     } catch (err) {
@@ -98,9 +120,9 @@ export function startDeadlineReminders() {
   async function tick() {
     try {
       await Promise.all([
-        checkAndSend(24 * 60 * MINUTE, BUFFER, "reminder24hSent", "24 hours"),
-        checkAndSend(60 * MINUTE,       BUFFER, "reminder1hSent",  "1 hour"),
-        checkAndSend(10 * MINUTE,       BUFFER, "reminder10mSent", "10 minutes"),
+        checkAndSend(24 * 60 * MINUTE, BUFFER, "reminder24hSent", "notifyReminder24h", "24 hours"),
+        checkAndSend(60 * MINUTE,       BUFFER, "reminder1hSent",  "notifyReminder1h",  "1 hour"),
+        checkAndSend(10 * MINUTE,       BUFFER, "reminder10mSent", "notifyReminder10m", "10 minutes"),
         checkOverdue(),
       ]);
     } catch (err) {

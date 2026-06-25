@@ -560,6 +560,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
 
+  /notifications/preferences:
+    get:
+      operationId: getNotificationPreferences
+      tags: [notifications]
+      summary: Get notification preferences for the current user
+      responses:
+        "200":
+          description: Notification preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferences"
+    put:
+      operationId: updateNotificationPreferences
+      tags: [notifications]
+      summary: Update notification preferences for the current user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationPreferences"
+      responses:
+        "200":
+          description: Updated preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferences"
+
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -815,6 +845,19 @@ components:
           type: string
       required:
         - message
+
+    NotificationPreferences:
+      type: object
+      required: [reminder24h, reminder1h, reminder10m, overdue]
+      properties:
+        reminder24h:
+          type: boolean
+        reminder1h:
+          type: boolean
+        reminder10m:
+          type: boolean
+        overdue:
+          type: boolean
 
     SignupInput:
       type: object

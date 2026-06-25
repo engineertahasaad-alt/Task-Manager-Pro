@@ -13,6 +13,13 @@ export interface MessageResponse {
   message: string;
 }
 
+export interface NotificationPreferences {
+  reminder24h: boolean;
+  reminder1h: boolean;
+  reminder10m: boolean;
+  overdue: boolean;
+}
+
 export interface SignupInput {
   fullName: string;
   mobile: string;

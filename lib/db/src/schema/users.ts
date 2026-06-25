@@ -12,6 +12,10 @@ export const usersTable = pgTable("users", {
   isActive: boolean("is_active").notNull().default(true),
   mustChangePassword: boolean("must_change_password").notNull().default(true),
   pendingApproval: boolean("pending_approval").notNull().default(false),
+  notifyReminder24h: boolean("notify_reminder_24h").notNull().default(true),
+  notifyReminder1h: boolean("notify_reminder_1h").notNull().default(true),
+  notifyReminder10m: boolean("notify_reminder_10m").notNull().default(true),
+  notifyOverdue: boolean("notify_overdue").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

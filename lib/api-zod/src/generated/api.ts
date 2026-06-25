@@ -840,6 +840,35 @@ export const MarkAllNotificationsReadResponse = zod.object({
 
 
 /**
+ * @summary Get notification preferences for the current user
+ */
+export const GetNotificationPreferencesResponse = zod.object({
+  "reminder24h": zod.boolean(),
+  "reminder1h": zod.boolean(),
+  "reminder10m": zod.boolean(),
+  "overdue": zod.boolean()
+})
+
+
+/**
+ * @summary Update notification preferences for the current user
+ */
+export const UpdateNotificationPreferencesBody = zod.object({
+  "reminder24h": zod.boolean(),
+  "reminder1h": zod.boolean(),
+  "reminder10m": zod.boolean(),
+  "overdue": zod.boolean()
+})
+
+export const UpdateNotificationPreferencesResponse = zod.object({
+  "reminder24h": zod.boolean(),
+  "reminder1h": zod.boolean(),
+  "reminder10m": zod.boolean(),
+  "overdue": zod.boolean()
+})
+
+
+/**
  * @summary Manager dashboard - task counts summary
  */
 export const GetDashboardSummaryQueryParams = zod.object({

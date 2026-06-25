@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
   Alert, ScrollView, Platform, Clipboard,
@@ -9,12 +9,13 @@ import * as Haptics from 'expo-haptics';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '@/context/AuthContext';
 import { router } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
-import { customFetch } from '@workspace/api-client-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { customFetch, useGetNotificationPreferences, useUpdateNotificationPreferences } from '@workspace/api-client-react';
 
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const {
     user, logout, biometricAvailable, biometricEnabled,
     enableBiometric, disableBiometric,
@@ -28,6 +29,26 @@ export default function SettingsScreen() {
     queryFn: () => customFetch<{ id: number; name: string; inviteCode: string }>('/api/team/info'),
     enabled: !!user,
   });
+
+  const { data: notifPrefs } = useGetNotificationPreferences({ query: { enabled: !!user && Platform.OS !== 'web' } });
+  const [prefs, setPrefs] = useState({ reminder24h: true, reminder1h: true, reminder10m: true, overdue: true });
+
+  useEffect(() => {
+    if (notifPrefs) setPrefs(notifPrefs);
+  }, [notifPrefs]);
+
+  const { mutate: savePrefs } = useUpdateNotificationPreferences({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['getNotificationPreferences'] }),
+    },
+  });
+
+  function handlePrefToggle(key: keyof typeof prefs, value: boolean) {
+    const updated = { ...prefs, [key]: value };
+    setPrefs(updated);
+    savePrefs({ data: updated });
+    Haptics.selectionAsync().catch(() => {});
+  }
 
   const topPadding = Platform.OS === 'web' ? 67 : insets.top + 16;
 
@@ -166,6 +187,44 @@ export default function SettingsScreen() {
             </View>
           </View>
         ) : null}
+
+        {/* Notification Preferences (native only) */}
+        {Platform.OS !== 'web' && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>NOTIFICATIONS</Text>
+            <View style={[styles.settingsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {([
+                { key: 'reminder24h' as const, label: '24-hour reminder', desc: 'Alert 24 hours before deadline', icon: 'clock', color: '#4F6EF7' },
+                { key: 'reminder1h' as const, label: '1-hour reminder', desc: 'Alert 1 hour before deadline', icon: 'clock', color: '#F59E0B' },
+                { key: 'reminder10m' as const, label: '10-minute reminder', desc: 'Alert 10 minutes before deadline', icon: 'clock', color: '#EF4444' },
+                { key: 'overdue' as const, label: 'Overdue alerts', desc: 'Alert when a task passes its deadline', icon: 'alert-circle', color: '#EF4444' },
+              ]).map((item, i, arr) => (
+                <View
+                  key={item.key}
+                  style={[
+                    styles.settingRow,
+                    i < arr.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+                  ]}
+                >
+                  <View style={[styles.settingIcon, { backgroundColor: item.color + '20' }]}>
+                    <Feather name={item.icon as any} size={18} color={item.color} />
+                  </View>
+                  <View style={styles.settingLabel}>
+                    <Text style={[styles.settingName, { color: colors.foreground }]}>{item.label}</Text>
+                    <Text style={[styles.settingDesc, { color: colors.mutedForeground }]}>{item.desc}</Text>
+                  </View>
+                  <Switch
+                    value={prefs[item.key]}
+                    onValueChange={(v) => handlePrefToggle(item.key, v)}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    thumbColor="#fff"
+                    ios_backgroundColor={colors.border}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Account */}
         <View style={styles.section}>
