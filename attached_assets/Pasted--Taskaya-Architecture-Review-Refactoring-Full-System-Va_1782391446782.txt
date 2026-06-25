@@ -1,0 +1,308 @@
+# Taskaya - Architecture Review, Refactoring & Full System Validation
+
+Please perform a complete architecture review of the entire application (Backend, Database, Web App, Mobile App) before implementing any changes.
+
+The objective is to deliver a production-ready system, not a prototype, partial implementation, workaround, or disconnected MVP.
+
+---
+
+## 1. Multi-Group Membership & Roles
+
+The system must support:
+
+* A single user belonging to multiple groups simultaneously.
+* A single user being a Manager in multiple groups.
+* A single user being a Team Member in multiple groups.
+* A single user being a Manager in one group and a Team Member in another group at the same time.
+
+Permissions must be determined per group, not per user.
+
+All screens, APIs, dashboards, reports, notifications, filters, permissions, and workflows must respect the user's role within the currently selected group.
+
+If the current architecture does not support this correctly, redesign and refactor it properly.
+
+---
+
+## 2. Database & Architecture Refactoring
+
+I have no issue with database refactoring if required.
+
+Do not implement temporary fixes or workarounds.
+
+If necessary, redesign the database to properly support:
+
+* Users
+* Groups
+* Group Memberships
+* Group Roles
+* Tasks
+* Task Assignees
+* Task Delegations
+* Notifications
+* Audit Logs
+
+Use scalable relational modeling.
+
+All permissions must be group-based.
+
+---
+
+## 3. Single Shared Backend & Database
+
+The Web App and Mobile App must use:
+
+* The same backend
+* The same APIs
+* The same database
+
+A user who registers from Web must be able to log in immediately from Mobile using the same credentials.
+
+A user who registers from Mobile must be able to log in immediately from Web using the same credentials.
+
+No separate databases.
+
+No duplicated user records.
+
+No duplicated workspaces.
+
+---
+
+## 4. Full Synchronization Between Web & Mobile
+
+Verify complete synchronization of:
+
+* Users
+* Groups
+* Roles
+* Tasks
+* Task Assignments
+* Task Statuses
+* Comments
+* Notifications
+* Dashboards
+* Reports
+* Activity Logs
+
+Any change performed from Web must appear on Mobile.
+
+Any change performed from Mobile must appear on Web.
+
+Review all synchronization logic and fix inconsistencies.
+
+---
+
+## 5. Multi-Assignee Tasks
+
+Allow tasks to be assigned to multiple users simultaneously.
+
+Requirements:
+
+* All assigned users can view the task.
+* All assigned users receive notifications.
+* Progress tracking remains accurate.
+* Task history remains intact.
+* UI clearly displays all assigned members.
+* Mobile and Web support the same functionality.
+
+---
+
+## 6. Cross-Group Task Delegation
+
+Support the following scenario:
+
+Manager A receives a task from their manager in Group A.
+
+Manager A must be able to delegate or distribute that task to members of another group they manage (Group B).
+
+Requirements:
+
+* Preserve original task history.
+* Preserve original creator.
+* Preserve timestamps.
+* Preserve audit logs.
+* Preserve traceability.
+* Create a clear parent-child relationship between original and delegated tasks.
+
+Managers must be able to track:
+
+* Original task
+* Delegated tasks
+* Progress of delegated tasks
+* Completion status
+
+---
+
+## 7. Audit Trail
+
+All critical actions must be logged:
+
+* User creation
+* Login
+* Group creation
+* Group membership changes
+* Role changes
+* Task creation
+* Task assignment
+* Task delegation
+* Task completion
+* Task deletion
+* Permission changes
+
+Audit logs must be preserved and searchable.
+
+---
+
+## 8. Critical Bug - Team Code Registration
+
+A major issue currently exists.
+
+Current behavior:
+
+When a user registers using a Team Code / Group Code:
+
+* A new workspace is created.
+* The user becomes Owner.
+* The user is NOT added to the intended team.
+
+This is incorrect.
+
+Required behavior:
+
+When a valid Team Code is entered:
+
+* User joins the existing team.
+* No new workspace is created.
+* User receives the intended role.
+* Membership record is created correctly.
+* Existing team data becomes visible immediately.
+
+Review and fix:
+
+* Registration flow
+* Invitation flow
+* Team Code validation
+* Membership creation
+* Role assignment
+* Workspace creation logic
+* Authentication logic
+* Mobile onboarding
+* Web onboarding
+
+Do not only fix the symptom.
+
+Perform full root-cause analysis.
+
+---
+
+## 9. Existing User Joining Additional Groups
+
+Support this scenario:
+
+* User already has an account.
+* User receives another Team Code.
+* User joins another group without creating a second account.
+
+The same account should be able to belong to multiple groups.
+
+No duplicate accounts should ever be created.
+
+---
+
+## 10. Full End-to-End Validation
+
+Review the entire system and verify:
+
+* Every screen works.
+* Every button works.
+* Every menu works.
+* Every API works.
+* Every workflow works.
+* Every database operation works.
+
+No placeholders.
+
+No dead links.
+
+No disconnected UI elements.
+
+No unfinished features.
+
+Every action must reach the database successfully.
+
+Every database update must be reflected in the UI.
+
+---
+
+## 11. Mobile & Web Feature Parity
+
+Unless there is a documented technical limitation:
+
+Everything available on Web must be available on Mobile.
+
+Everything available on Mobile must be available on Web.
+
+Review both platforms and eliminate feature gaps.
+
+---
+
+## 12. Required Testing Matrix
+
+Execute and document testing for:
+
+* New Owner Registration
+* Team Code Registration
+* Invitation Link Registration
+* Member Registration
+* Manager Registration
+* Existing User Joining Additional Groups
+* Multi-Group Membership
+* Different Roles Across Groups
+* Group Switching
+* Task Creation
+* Single Assignee Tasks
+* Multi-Assignee Tasks
+* Cross-Group Delegation
+* Notifications
+* Mobile Login
+* Web Login
+* Mobile Registration
+* Web Registration
+* Mobile/Web Synchronization
+* Permission Enforcement
+* Database Consistency
+
+---
+
+## 13. Validation Report Required
+
+Do not consider the task completed until a validation report is produced.
+
+The report must include:
+
+* Issues Found
+* Root Causes
+* Fixes Applied
+* Database Changes
+* API Changes
+* Screens Modified
+* Permission Changes
+* Synchronization Fixes
+* Test Cases Executed
+* Test Results
+* Remaining Risks (if any)
+
+---
+
+## Final Requirement
+
+Do not apply quick fixes.
+
+Do not apply temporary solutions.
+
+Analyze the architecture first.
+
+Identify all affected database tables, APIs, services, permissions, screens, and workflows.
+
+Then implement the changes safely without breaking existing functionality.
+
+The final result must be a fully connected, production-ready, synchronized Web and Mobile application.
