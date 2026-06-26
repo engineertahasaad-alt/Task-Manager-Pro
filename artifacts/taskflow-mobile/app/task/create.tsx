@@ -10,6 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { useListUsers, useCreateTask } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useColors } from '@/hooks/useColors';
+import { DatePickerButton } from '@/components/DatePickerButton';
 
 export default function CreateTaskScreen() {
   const colors = useColors();
@@ -38,8 +39,7 @@ export default function CreateTaskScreen() {
     if (!deadline.trim()) { setError('Deadline is required'); return; }
     if (assigneeIds.length === 0) { setError('Please select at least one assignee'); return; }
 
-    const deadlineDate = new Date(deadline);
-    if (isNaN(deadlineDate.getTime())) { setError('Invalid date format. Use YYYY-MM-DD'); return; }
+    const deadlineDate = new Date(deadline + 'T00:00:00');
 
     setError('');
     setIsLoading(true);
@@ -112,13 +112,10 @@ export default function CreateTaskScreen() {
 
         <View style={styles.field}>
           <Text style={[styles.label, { color: colors.foreground }]}>Deadline *</Text>
-          <TextInput
-            style={[styles.input, { borderColor: colors.border, backgroundColor: colors.card, color: colors.foreground }]}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={colors.mutedForeground}
+          <DatePickerButton
             value={deadline}
-            onChangeText={setDeadline}
-            keyboardType="numbers-and-punctuation"
+            onChange={setDeadline}
+            placeholder="Select deadline"
           />
         </View>
 

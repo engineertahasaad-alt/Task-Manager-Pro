@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, FlatList,
   ActivityIndicator, Platform, TextInput, ScrollView, Modal,
 } from 'react-native';
+import { DatePickerButton } from '@/components/DatePickerButton';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -267,21 +268,20 @@ export default function AuditLogScreen() {
           </View>
           <ScrollView contentContainerStyle={styles.modalContent}>
             <Text style={[styles.filterLabel, { color: colors.mutedForeground }]}>FROM DATE</Text>
-            <TextInput
-              style={[styles.filterInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.mutedForeground}
+            <DatePickerButton
               value={draft.startDate}
-              onChangeText={v => setDraft(d => ({ ...d, startDate: v }))}
+              onChange={v => setDraft(d => ({ ...d, startDate: v }))}
+              placeholder="All time"
+              style={styles.datePickerSpacing}
             />
 
             <Text style={[styles.filterLabel, { color: colors.mutedForeground }]}>TO DATE</Text>
-            <TextInput
-              style={[styles.filterInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.mutedForeground}
+            <DatePickerButton
               value={draft.endDate}
-              onChangeText={v => setDraft(d => ({ ...d, endDate: v }))}
+              onChange={v => setDraft(d => ({ ...d, endDate: v }))}
+              placeholder="All time"
+              minimumDate={draft.startDate ? new Date(draft.startDate + 'T00:00:00') : undefined}
+              style={styles.datePickerSpacing}
             />
 
             <Text style={[styles.filterLabel, { color: colors.mutedForeground }]}>ACTION TYPE</Text>
@@ -411,6 +411,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
     fontSize: 14, fontFamily: 'Inter_400Regular', marginBottom: 12, minHeight: 44,
   },
+  datePickerSpacing: { marginBottom: 12 },
   filterInputText: { fontSize: 14, fontFamily: 'Inter_400Regular' },
   chipRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
   chip: {
