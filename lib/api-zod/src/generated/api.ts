@@ -22,7 +22,9 @@ export const HealthCheckResponse = zod.object({
 export const SignupBody = zod.object({
   "fullName": zod.string(),
   "mobile": zod.string(),
-  "password": zod.string()
+  "password": zod.string(),
+  "inviteCode": zod.string().optional(),
+  "teamName": zod.string().optional()
 })
 
 

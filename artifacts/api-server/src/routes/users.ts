@@ -190,15 +190,26 @@ router.patch("/users/:id", requireRole("owner", "deputy"), async (req, res): Pro
   const updateData: any = { ...parsed.data };
   delete updateData.role;
 
-  const [user] = await db
-    .update(usersTable)
-    .set(updateData)
-    .where(eq(usersTable.id, params.data.id))
-    .returning();
-
-  if (!user) {
-    res.status(404).json({ error: "User not found" });
-    return;
+  let user;
+  if (Object.keys(updateData).length > 0) {
+    const [updated] = await db
+      .update(usersTable)
+      .set(updateData)
+      .where(eq(usersTable.id, params.data.id))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    user = updated;
+  } else {
+    // Only role was provided — fetch the existing user without modifying it
+    const [existing] = await db.select().from(usersTable).where(eq(usersTable.id, params.data.id));
+    if (!existing) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    user = existing;
   }
 
   if (parsed.data.role && groupId != null) {

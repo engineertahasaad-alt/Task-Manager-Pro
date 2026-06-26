@@ -10,4 +10,6 @@ export interface SignupInput {
   fullName: string;
   mobile: string;
   password: string;
+  inviteCode?: string;
+  teamName?: string;
 }

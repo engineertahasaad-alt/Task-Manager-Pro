@@ -94,9 +94,10 @@ router.post("/tasks/:id/messages", async (req, res): Promise<void> => {
     })
     .returning();
 
-  const sender = req.user!;
-  const senderRole = sender.role;
+  const senderAuth = req.user!;
+  const senderRole = senderAuth.role;
   const isManager = senderRole === "owner" || senderRole === "deputy";
+  const [senderRow] = await db.select().from(usersTable).where(eq(usersTable.id, senderAuth.id));
 
   if (isManager) {
     // Notify all assignees (except the sender if they happen to be one)
@@ -105,11 +106,11 @@ router.post("/tasks/:id/messages", async (req, res): Promise<void> => {
       .from(taskAssigneesTable)
       .where(eq(taskAssigneesTable.taskId, task.id));
     for (const row of assigneeRows) {
-      if (row.userId !== sender.id) {
+      if (row.userId !== senderAuth.id) {
         await db.insert(notificationsTable).values({
           userId: row.userId,
           type: "task_assigned",
-          message: `${sender.fullName} sent you a message on task: "${task.title}"`,
+          message: `${senderAuth.fullName} sent you a message on task: "${task.title}"`,
           taskId: task.id,
         });
       }
@@ -128,11 +129,11 @@ router.post("/tasks/:id/messages", async (req, res): Promise<void> => {
           )
         );
       for (const mem of managerMemberships) {
-        if (mem.userId !== sender.id) {
+        if (mem.userId !== senderAuth.id) {
           await db.insert(notificationsTable).values({
             userId: mem.userId,
             type: "task_assigned",
-            message: `${sender.fullName} replied on task: "${task.title}"`,
+            message: `${senderAuth.fullName} replied on task: "${task.title}"`,
             taskId: task.id,
           });
         }
@@ -144,7 +145,7 @@ router.post("/tasks/:id/messages", async (req, res): Promise<void> => {
     id: message.id,
     taskId: message.taskId,
     senderId: message.senderId,
-    sender: serializeUser(sender as any),
+    sender: senderRow ? serializeUser(senderRow) : undefined,
     content: message.content,
     attachmentUrl: message.attachmentUrl ?? null,
     attachmentName: message.attachmentName ?? null,

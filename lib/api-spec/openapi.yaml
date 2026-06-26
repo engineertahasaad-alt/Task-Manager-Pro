@@ -983,6 +983,12 @@ components:
           type: string
         password:
           type: string
+        inviteCode:
+          type: string
+          description: Invite code to join an existing team (omit to create a new team)
+        teamName:
+          type: string
+          description: Team name when creating a new team (optional)
 
     ForgotPasswordInput:
       type: object
