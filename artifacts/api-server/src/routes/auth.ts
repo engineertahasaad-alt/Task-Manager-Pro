@@ -6,6 +6,7 @@ import { LoginBody, ChangePasswordBody, SignupBody, ForgotPasswordBody } from "@
 import { signToken, requireAuth } from "../middlewares/auth";
 import { randomBytes } from "crypto";
 import { z } from "zod";
+import { logAudit } from "../lib/audit";
 
 const router = Router();
 
@@ -38,6 +39,7 @@ router.post("/auth/forgot-password", async (req, res): Promise<void> => {
   }
   const passwordHash = await bcrypt.hash(newPassword, 10);
   await db.update(usersTable).set({ passwordHash, mustChangePassword: false }).where(eq(usersTable.id, user.id));
+  await logAudit("user_password_changed", user.id, user.teamId, "user", user.id, { method: "forgot_password" });
   res.json({ message: "Password reset successfully. You can now sign in with your new password." });
 });
 
@@ -92,6 +94,7 @@ router.post("/auth/signup", async (req, res): Promise<void> => {
         isActive: false,
         pendingApproval: true,
       });
+      await logAudit("member_joined", existingUser.id, team.id, "user", existingUser.id, { groupName: team.name, pendingApproval: true });
       res.status(201).json({
         pendingApproval: true,
         user: serializeUser(existingUser, "member", team.id),
@@ -117,6 +120,8 @@ router.post("/auth/signup", async (req, res): Promise<void> => {
       isActive: false,
       pendingApproval: true,
     });
+    await logAudit("user_created", user.id, team.id, "user", user.id, { fullName, role: "member" });
+    await logAudit("member_joined", user.id, team.id, "user", user.id, { groupName: team.name, pendingApproval: true });
     res.status(201).json({ pendingApproval: true, user: serializeUser(user, "member", team.id), team: { id: team.id, name: team.name } });
   } else {
     // Creating a new team — user becomes owner
@@ -142,6 +147,8 @@ router.post("/auth/signup", async (req, res): Promise<void> => {
       isActive: true,
       pendingApproval: false,
     });
+    await logAudit("group_created", user.id, team.id, "group", team.id, { groupName: team.name });
+    await logAudit("user_created", user.id, team.id, "user", user.id, { fullName, role: "owner" });
     const token = signToken(user.id, team.id);
     res.status(201).json({
       token,
@@ -193,6 +200,11 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     })
   );
 
+  try {
+    await logAudit("user_login", user.id, activeGroupId, "user", user.id, { mobile: user.mobile });
+  } catch {
+    /* best-effort: login must not fail because of an audit write error */
+  }
   res.json({
     token,
     user: serializeUser(user, activeRole, activeGroupId),
@@ -276,6 +288,7 @@ router.post("/auth/change-password", requireAuth, async (req, res): Promise<void
   }
   const passwordHash = await bcrypt.hash(newPassword, 10);
   await db.update(usersTable).set({ passwordHash, mustChangePassword: false }).where(eq(usersTable.id, user.id));
+  await logAudit("user_password_changed", req.user!.id, req.user!.groupId, "user", user.id, {});
   res.json({ message: "Password changed successfully" });
 });
 

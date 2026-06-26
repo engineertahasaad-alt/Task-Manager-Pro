@@ -17,6 +17,7 @@ import Team from "@/pages/team/index";
 import Notifications from "@/pages/notifications/index";
 import Reports from "@/pages/reports/index";
 import Settings from "@/pages/settings/index";
+import AuditLog from "@/pages/settings/audit-log";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,7 @@ function Router() {
       <Route path="/notifications"><PrivateRoute component={Notifications} /></Route>
       <Route path="/reports"><PrivateRoute component={Reports} /></Route>
       <Route path="/settings"><PrivateRoute component={Settings} /></Route>
+      <Route path="/settings/audit-log"><PrivateRoute component={AuditLog} /></Route>
       
       <Route path="/">
         <Redirect to="/dashboard" />

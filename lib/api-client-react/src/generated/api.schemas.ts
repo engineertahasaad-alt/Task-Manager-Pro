@@ -358,6 +358,33 @@ export interface WebAuthnOptionsResponse {
   challenge: string;
 }
 
+export type AuditLogMetadata = { [key: string]: unknown } | null;
+
+export interface AuditLog {
+  id: number;
+  /** @nullable */
+  groupId?: number | null;
+  /** @nullable */
+  actorId?: number | null;
+  /** @nullable */
+  actorName?: string | null;
+  action: string;
+  /** @nullable */
+  targetType?: string | null;
+  /** @nullable */
+  targetId?: number | null;
+  metadata?: AuditLogMetadata;
+  createdAt: string;
+}
+
+export interface AuditLogPage {
+  data: AuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
 export interface VapidPublicKeyResponse {
   publicKey: string;
 }
@@ -463,4 +490,31 @@ endDate?: string;
 };
 
 export type GetWebAuthnRegisterOptions200 = { [key: string]: unknown };
+
+export type ListAuditLogsParams = {
+/**
+ * @nullable
+ */
+startDate?: string | null;
+/**
+ * @nullable
+ */
+endDate?: string | null;
+/**
+ * @nullable
+ */
+action?: string | null;
+/**
+ * @nullable
+ */
+actorId?: number | null;
+/**
+ * @nullable
+ */
+page?: number | null;
+/**
+ * @nullable
+ */
+limit?: number | null;
+};
 

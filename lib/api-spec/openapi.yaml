@@ -23,6 +23,8 @@ tags:
     description: Dashboard data
   - name: reports
     description: Reports
+  - name: audit
+    description: Audit log
 paths:
   /healthz:
     get:
@@ -887,6 +889,46 @@ paths:
         "401":
           description: Authentication failed
 
+  /audit-logs:
+    get:
+      operationId: listAuditLogs
+      tags: [audit]
+      summary: List audit log entries for the active group (owner/deputy only)
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: endDate
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: action
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: actorId
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: page
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: limit
+          in: query
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: Paginated audit log entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogPage"
+        "403":
+          description: Not authorized
+
   /push/vapid-public-key:
     get:
       operationId: getVapidPublicKey
@@ -1391,6 +1433,48 @@ components:
       properties:
         challenge:
           type: string
+
+    AuditLog:
+      type: object
+      required: [id, action, createdAt]
+      properties:
+        id:
+          type: integer
+        groupId:
+          type: ["integer", "null"]
+        actorId:
+          type: ["integer", "null"]
+        actorName:
+          type: ["string", "null"]
+        action:
+          type: string
+        targetType:
+          type: ["string", "null"]
+        targetId:
+          type: ["integer", "null"]
+        metadata:
+          type: object
+          nullable: true
+          additionalProperties: true
+        createdAt:
+          type: string
+
+    AuditLogPage:
+      type: object
+      required: [data, total, page, limit, pages]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        pages:
+          type: integer
 
     VapidPublicKeyResponse:
       type: object

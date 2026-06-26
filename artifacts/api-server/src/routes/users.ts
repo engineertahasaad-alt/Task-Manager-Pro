@@ -5,6 +5,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { CreateUserBody, UpdateUserBody, GetUserParams, UpdateUserParams, DisableUserParams, ResetUserPasswordBody, ResetUserPasswordParams } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeUser } from "./auth";
+import { logAudit } from "../lib/audit";
 
 const router = Router();
 
@@ -132,6 +133,7 @@ router.post("/users", requireRole("owner", "deputy"), async (req, res): Promise<
     });
   }
 
+  await logAudit("user_created", req.user!.id, groupId, "user", user.id, { fullName, role });
   res.status(201).json(serializeUser(user, role, groupId));
 });
 
@@ -209,6 +211,7 @@ router.patch("/users/:id", requireRole("owner", "deputy"), async (req, res): Pro
           eq(groupMembershipsTable.groupId, groupId)
         )
       );
+    await logAudit("role_changed", req.user!.id, groupId, "user", params.data.id, { newRole: parsed.data.role });
   }
 
   let role = user.role;
@@ -252,6 +255,10 @@ router.post("/users/:id/reset-password", requireRole("owner", "deputy"), async (
   }
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 10);
   await db.update(usersTable).set({ passwordHash, mustChangePassword: true }).where(eq(usersTable.id, user.id));
+  await logAudit("user_password_changed", req.user!.id, groupId, "user", user.id, {
+    method: "admin_reset",
+    targetUserId: user.id,
+  });
   res.json({ message: "Password reset. User must change password on next login." });
 });
 
@@ -278,6 +285,7 @@ router.patch("/users/:id/disable", requireRole("owner", "deputy"), async (req, r
       .where(and(eq(groupMembershipsTable.userId, params.data.id), eq(groupMembershipsTable.groupId, groupId)))
       .returning();
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, params.data.id));
+    await logAudit("user_deactivated", req.user!.id, groupId, "user", params.data.id, { isActive: updated.isActive });
     res.json(serializeUser(user, updated.role, groupId));
     return;
   }
@@ -331,6 +339,7 @@ router.post("/team/join-requests/:id/approve", requireRole("owner", "deputy"), a
     .set({ isActive: true, pendingApproval: false })
     .where(eq(usersTable.id, id));
 
+  await logAudit("member_approved", req.user!.id, groupId, "user", id, {});
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
   res.json(serializeUser(user, mem.role, groupId));
 });
@@ -350,6 +359,8 @@ router.post("/team/join-requests/:id/reject", requireRole("owner", "deputy"), as
   await db.delete(groupMembershipsTable).where(
     and(eq(groupMembershipsTable.userId, id), eq(groupMembershipsTable.groupId, groupId))
   );
+
+  await logAudit("member_removed", req.user!.id, groupId, "user", id, { reason: "join_request_rejected" });
 
   // Check if user has other memberships; if not, soft-delete
   const otherMemberships = await db

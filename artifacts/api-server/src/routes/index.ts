@@ -10,6 +10,7 @@ import dashboardRouter from "./dashboard";
 import reportsRouter from "./reports";
 import pushRouter from "./push";
 import webauthnRouter from "./webauthn";
+import auditRouter from "./audit";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(dashboardRouter);
 router.use(reportsRouter);
 router.use(pushRouter);
 router.use(webauthnRouter);
+router.use(auditRouter);
 
 export default router;

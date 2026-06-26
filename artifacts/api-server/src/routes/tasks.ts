@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, tasksTable, usersTable, attachmentsTable, messagesTable, notificationsTable, groupMembershipsTable, taskAssigneesTable, taskDelegationsTable } from "@workspace/db";
 import { eq, and, gte, lte, inArray, count, sql } from "drizzle-orm";
+import { logAudit } from "../lib/audit";
 import {
   ListTasksQueryParams,
   CreateTaskBody,
@@ -355,6 +356,11 @@ router.post("/tasks", requireRole("owner", "deputy"), async (req, res): Promise<
     }
   }
 
+  await logAudit("task_created", req.user!.id, req.user!.groupId, "task", task.id, { title, assigneeIds });
+  for (const aId of assigneeIds) {
+    await logAudit("task_assigned", req.user!.id, req.user!.groupId, "task", task.id, { assigneeId: aId });
+  }
+
   const serialized = await serializeTask(task);
   res.status(201).json(serialized);
 });
@@ -482,6 +488,13 @@ router.post("/tasks/:id/delegate", requireRole("owner", "deputy"), async (req, r
     await sendPushToUser(aId, "New Delegated Task", `You've been assigned: "${task.title}"`, childTask.id);
   }
 
+  await logAudit("task_delegated", req.user!.id, sourceGroupId, "task", task.id, {
+    title: task.title,
+    targetGroupId,
+    childTaskId: childTask.id,
+    assigneeIds,
+  });
+
   res.status(201).json(await serializeTask(childTask, true, false));
 });
 
@@ -524,6 +537,7 @@ router.patch("/tasks/:id", requireRole("owner", "deputy"), async (req, res): Pro
     for (const aId of newlyAdded) {
       await createNotification(aId, "task_assigned", `You have been assigned the task: "${task.title}"`, task.id);
       await sendPushToUser(aId, "Task Assigned", `You've been assigned: "${task.title}"`, task.id);
+      await logAudit("task_assigned", req.user!.id, groupId, "task", task.id, { assigneeId: aId });
     }
   }
 
@@ -560,6 +574,8 @@ router.patch("/tasks/:id/complete", async (req, res): Promise<void> => {
     .set({ status: "completed" })
     .where(and(eq(tasksTable.id, params.data.id), eq(tasksTable.teamId, groupId!)))
     .returning();
+
+  await logAudit("task_completed", req.user!.id, groupId, "task", task.id, { title: task.title });
 
   if (groupId != null) {
     const managerMemberships = await db
@@ -599,6 +615,8 @@ router.patch("/tasks/:id/approve", requireRole("owner", "deputy"), async (req, r
     .where(and(eq(tasksTable.id, params.data.id), eq(tasksTable.teamId, groupId!)))
     .returning();
 
+  await logAudit("task_approved", req.user!.id, groupId, "task", task.id, { title: task.title });
+
   // Notify all assignees
   const assigneeRows = await db
     .select({ userId: taskAssigneesTable.userId })
@@ -630,6 +648,8 @@ router.patch("/tasks/:id/reopen", requireRole("owner", "deputy"), async (req, re
     .set({ status: "reopened" })
     .where(and(eq(tasksTable.id, params.data.id), eq(tasksTable.teamId, groupId!)))
     .returning();
+
+  await logAudit("task_reopened", req.user!.id, groupId, "task", task.id, { title: task.title });
 
   // Notify all assignees
   const assigneeRows = await db
@@ -714,6 +734,12 @@ router.post("/tasks/:id/reassign-request", async (req, res): Promise<void> => {
     }
   }
 
+  await logAudit("task_reassign_requested", req.user!.id, groupId, "task", task.id, {
+    title: task.title,
+    requestedAssigneeId,
+    requestedAssigneeName: newAssignee.fullName,
+  });
+
   res.json(await serializeTask(updated));
 });
 
@@ -753,6 +779,13 @@ router.patch("/tasks/:id/reassign-approve", requireRole("owner", "deputy"), asyn
   await sendPushToUser(newAssigneeId, "Task Assigned", `You've been assigned: "${task.title}"`, task.id);
   await sendPushToUser(requestingAssigneeId, "Reassignment Approved", `Your reassignment request for "${task.title}" was approved`, task.id);
 
+  await logAudit("task_assigned", req.user!.id, groupId, "task", task.id, {
+    title: task.title,
+    newAssigneeId,
+    fromAssigneeId: requestingAssigneeId,
+    reason: "reassignment_approved",
+  });
+
   res.json(await serializeTask(updated));
 });
 
@@ -772,6 +805,12 @@ router.patch("/tasks/:id/reassign-reject", requireRole("owner", "deputy"), async
     .set({ reassignToId: null, reassignFromId: null, reassignStatus: null })
     .where(and(eq(tasksTable.id, id), eq(tasksTable.teamId, groupId!)))
     .returning();
+
+  await logAudit("task_reassign_rejected", req.user!.id, groupId, "task", task.id, {
+    title: task.title,
+    requesterId: task.reassignFromId,
+    requestedAssigneeId: task.reassignToId,
+  });
 
   // Notify the requester (tracked in reassignFromId)
   if (task.reassignFromId) {

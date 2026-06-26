@@ -1890,6 +1890,37 @@ export const VerifyWebAuthnLoginResponse = zod.object({
 
 
 /**
+ * @summary List audit log entries for the active group (owner/deputy only)
+ */
+export const ListAuditLogsQueryParams = zod.object({
+  "startDate": zod.coerce.string().nullish(),
+  "endDate": zod.coerce.string().nullish(),
+  "action": zod.coerce.string().nullish(),
+  "actorId": zod.coerce.number().nullish(),
+  "page": zod.coerce.number().nullish(),
+  "limit": zod.coerce.number().nullish()
+})
+
+export const ListAuditLogsResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.number(),
+  "groupId": zod.number().nullish(),
+  "actorId": zod.number().nullish(),
+  "actorName": zod.string().nullish(),
+  "action": zod.string(),
+  "targetType": zod.string().nullish(),
+  "targetId": zod.number().nullish(),
+  "metadata": zod.record(zod.string(), zod.unknown()).nullish(),
+  "createdAt": zod.string()
+})),
+  "total": zod.number(),
+  "page": zod.number(),
+  "limit": zod.number(),
+  "pages": zod.number()
+})
+
+
+/**
  * @summary Get VAPID public key for web push
  */
 export const GetVapidPublicKeyResponse = zod.object({

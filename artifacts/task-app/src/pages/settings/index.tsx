@@ -10,8 +10,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useChangePassword } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { KeyRound, LogOut, User, Users, Copy, Check } from "lucide-react";
+import { KeyRound, LogOut, User, Users, Copy, Check, ShieldCheck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
@@ -169,6 +170,24 @@ export default function Settings() {
             </Form>
           </CardContent>
         </Card>
+
+        {(user?.role === "owner" || user?.role === "deputy") && (
+          <Card className="border-indigo-100 bg-indigo-50/30">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <ShieldCheck className="mr-2 h-5 w-5 text-indigo-600" /> Administration
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Link href="/settings/audit-log">
+                <Button variant="outline" className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                  View Audit Log
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="border-red-100 bg-red-50/30">
           <CardHeader>

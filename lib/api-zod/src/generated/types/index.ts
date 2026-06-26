@@ -7,6 +7,9 @@
  */
 
 export * from './attachment';
+export * from './auditLog';
+export * from './auditLogMetadata';
+export * from './auditLogPage';
 export * from './authResponse';
 export * from './changePasswordInput';
 export * from './dashboardSummary';
@@ -25,6 +28,7 @@ export * from './getWorkloadByEmployeeParams';
 export * from './groupSummary';
 export * from './groupSummaryRole';
 export * from './healthStatus';
+export * from './listAuditLogsParams';
 export * from './listTasksDateFilter';
 export * from './listTasksParams';
 export * from './listTasksStatus';

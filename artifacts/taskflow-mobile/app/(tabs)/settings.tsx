@@ -273,6 +273,29 @@ export default function SettingsScreen() {
           </View>
         )}
 
+        {/* Administration — managers only */}
+        {(user?.role === 'owner' || user?.role === 'deputy') && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>ADMINISTRATION</Text>
+            <View style={[styles.settingsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() => router.push('/audit-log' as any)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.settingIcon, { backgroundColor: '#6366F120' }]}>
+                  <Feather name="shield" size={18} color="#6366F1" />
+                </View>
+                <View style={styles.settingLabel}>
+                  <Text style={[styles.settingName, { color: colors.foreground }]}>Audit Log</Text>
+                  <Text style={[styles.settingDesc, { color: colors.mutedForeground }]}>View all group activity</Text>
+                </View>
+                <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Account */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>ACCOUNT</Text>
