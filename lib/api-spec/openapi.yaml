@@ -1050,6 +1050,10 @@ components:
           type: integer
         assignee:
           $ref: "#/components/schemas/User"
+        assignees:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
         creatorId:
           type: integer
         creator:
@@ -1086,7 +1090,7 @@ components:
 
     TaskInput:
       type: object
-      required: [title, description, assigneeId, deadline]
+      required: [title, description, deadline]
       properties:
         title:
           type: string
@@ -1094,6 +1098,10 @@ components:
           type: string
         assigneeId:
           type: integer
+        assigneeIds:
+          type: array
+          items:
+            type: integer
         deadline:
           type: string
 
@@ -1106,6 +1114,10 @@ components:
           type: string
         assigneeId:
           type: integer
+        assigneeIds:
+          type: array
+          items:
+            type: integer
         deadline:
           type: string
 

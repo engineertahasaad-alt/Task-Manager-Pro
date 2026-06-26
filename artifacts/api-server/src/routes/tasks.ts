@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, tasksTable, usersTable, attachmentsTable, messagesTable, notificationsTable, groupMembershipsTable } from "@workspace/db";
-import { eq, and, gte, lte, inArray, count } from "drizzle-orm";
+import { db, tasksTable, usersTable, attachmentsTable, messagesTable, notificationsTable, groupMembershipsTable, taskAssigneesTable } from "@workspace/db";
+import { eq, and, gte, lte, inArray, count, sql } from "drizzle-orm";
 import {
   ListTasksQueryParams,
   CreateTaskBody,
@@ -39,17 +39,54 @@ function getDateRange(dateFilter?: string, startDate?: string, endDate?: string)
   return null;
 }
 
+/** Fetch all assignee user records for a task */
+async function getTaskAssignees(taskId: number) {
+  const rows = await db
+    .select({ user: usersTable })
+    .from(taskAssigneesTable)
+    .innerJoin(usersTable, eq(usersTable.id, taskAssigneesTable.userId))
+    .where(eq(taskAssigneesTable.taskId, taskId));
+  return rows.map(r => serializeUser(r.user));
+}
+
+/** Sync task_assignees: insert new, delete removed. Returns newly added user IDs. */
+async function syncTaskAssignees(taskId: number, assigneeIds: number[]): Promise<number[]> {
+  const existing = await db
+    .select({ userId: taskAssigneesTable.userId })
+    .from(taskAssigneesTable)
+    .where(eq(taskAssigneesTable.taskId, taskId));
+
+  const existingIds = new Set(existing.map(r => r.userId));
+  const newIds = new Set(assigneeIds);
+
+  const toAdd = assigneeIds.filter(id => !existingIds.has(id));
+  const toRemove = [...existingIds].filter(id => !newIds.has(id));
+
+  if (toAdd.length > 0) {
+    await db.insert(taskAssigneesTable).values(
+      toAdd.map(userId => ({ taskId, userId }))
+    ).onConflictDoNothing();
+  }
+
+  if (toRemove.length > 0) {
+    await db.delete(taskAssigneesTable).where(
+      and(eq(taskAssigneesTable.taskId, taskId), inArray(taskAssigneesTable.userId, toRemove))
+    );
+  }
+
+  return toAdd;
+}
+
 async function serializeTask(task: typeof tasksTable.$inferSelect, includeRelations = true) {
   let assignee = undefined;
   let creator = undefined;
   let reassignTo = undefined;
   let attachments: unknown[] = [];
   let messageCount = 0;
+  let assignees: unknown[] = [];
 
   if (includeRelations) {
-    const [assigneeRow] = await db.select().from(usersTable).where(eq(usersTable.id, task.assigneeId));
     const [creatorRow] = await db.select().from(usersTable).where(eq(usersTable.id, task.creatorId));
-    assignee = assigneeRow ? serializeUser(assigneeRow) : undefined;
     creator = creatorRow ? serializeUser(creatorRow) : undefined;
 
     if (task.reassignToId) {
@@ -74,20 +111,30 @@ async function serializeTask(task: typeof tasksTable.$inferSelect, includeRelati
       .from(messagesTable)
       .where(eq(messagesTable.taskId, task.id));
     messageCount = msgCount?.count ?? 0;
+
+    assignees = await getTaskAssignees(task.id);
+    // Derive legacy assignee/assigneeId from junction table for backward compat
+    if (assignees.length > 0) {
+      assignee = assignees[0];
+    }
   }
+
+  const firstAssignee = assignees[0] as any;
 
   return {
     id: task.id,
     title: task.title,
     description: task.description,
-    assigneeId: task.assigneeId,
+    assigneeId: firstAssignee?.id ?? null,
     assignee,
+    assignees,
     creatorId: task.creatorId,
     creator,
     deadline: task.deadline.toISOString(),
     status: task.status,
     reassignToId: task.reassignToId ?? null,
     reassignTo: reassignTo ?? null,
+    reassignFromId: task.reassignFromId ?? null,
     reassignStatus: task.reassignStatus ?? null,
     attachments,
     messageCount,
@@ -115,6 +162,17 @@ async function loadTaskInGroup(taskId: number, groupId: number | null | undefine
   return task ?? null;
 }
 
+/** Resolve assigneeIds from request body - supports both assigneeIds[] and legacy assigneeId */
+function resolveAssigneeIds(body: { assigneeIds?: number[]; assigneeId?: number }): number[] | null {
+  if (body.assigneeIds && body.assigneeIds.length > 0) {
+    return body.assigneeIds;
+  }
+  if (body.assigneeId) {
+    return [body.assigneeId];
+  }
+  return null;
+}
+
 router.get("/tasks", async (req, res): Promise<void> => {
   const params = ListTasksQueryParams.safeParse(req.query);
   if (!params.success) {
@@ -129,9 +187,29 @@ router.get("/tasks", async (req, res): Promise<void> => {
   if (groupId != null) conditions.push(eq(tasksTable.teamId, groupId));
 
   if (req.user!.role === "member") {
-    conditions.push(eq(tasksTable.assigneeId, req.user!.id));
+    // Members see tasks they are assigned to (via junction table)
+    const memberTaskIds = await db
+      .select({ taskId: taskAssigneesTable.taskId })
+      .from(taskAssigneesTable)
+      .where(eq(taskAssigneesTable.userId, req.user!.id));
+    const ids = memberTaskIds.map(r => r.taskId);
+    if (ids.length === 0) {
+      res.json([]);
+      return;
+    }
+    conditions.push(inArray(tasksTable.id, ids));
   } else if (assigneeId) {
-    conditions.push(eq(tasksTable.assigneeId, assigneeId));
+    // Filter by assignee via junction table
+    const assigneeTaskIds = await db
+      .select({ taskId: taskAssigneesTable.taskId })
+      .from(taskAssigneesTable)
+      .where(eq(taskAssigneesTable.userId, assigneeId));
+    const ids = assigneeTaskIds.map(r => r.taskId);
+    if (ids.length === 0) {
+      res.json([]);
+      return;
+    }
+    conditions.push(inArray(tasksTable.id, ids));
   }
 
   if (status) {
@@ -161,13 +239,18 @@ router.post("/tasks", requireRole("owner", "deputy"), async (req, res): Promise<
     return;
   }
 
-  const { title, description, assigneeId, deadline } = parsed.data;
+  const { title, description, deadline } = parsed.data;
+  const assigneeIds = resolveAssigneeIds(parsed.data as any);
+  if (!assigneeIds || assigneeIds.length === 0) {
+    res.status(400).json({ error: "At least one assignee is required (assigneeIds or assigneeId)" });
+    return;
+  }
+
   const [task] = await db
     .insert(tasksTable)
     .values({
       title,
       description: description ?? "",
-      assigneeId,
       creatorId: req.user!.id,
       teamId: req.user!.groupId,
       deadline: new Date(deadline),
@@ -175,9 +258,18 @@ router.post("/tasks", requireRole("owner", "deputy"), async (req, res): Promise<
     })
     .returning();
 
-  const [assignee] = await db.select().from(usersTable).where(eq(usersTable.id, assigneeId));
-  if (assignee) {
-    await createNotification(assigneeId, "task_assigned", `You have been assigned a new task: "${title}"`, task.id);
+  // Insert all assignees into junction table
+  await db.insert(taskAssigneesTable).values(
+    assigneeIds.map(userId => ({ taskId: task.id, userId }))
+  ).onConflictDoNothing();
+
+  // Notify all assignees
+  for (const aId of assigneeIds) {
+    const [assignee] = await db.select().from(usersTable).where(eq(usersTable.id, aId));
+    if (assignee) {
+      await createNotification(aId, "task_assigned", `You have been assigned a new task: "${title}"`, task.id);
+      await sendPushToUser(aId, "New Task Assigned", `You've been assigned: "${title}"`, task.id);
+    }
   }
 
   const serialized = await serializeTask(task);
@@ -194,6 +286,17 @@ router.get("/tasks/:id", async (req, res): Promise<void> => {
   if (!task) {
     res.status(404).json({ error: "Task not found" });
     return;
+  }
+  // Members may only view tasks they are assigned to (via junction table)
+  if (req.user!.role === "member") {
+    const [assignment] = await db
+      .select()
+      .from(taskAssigneesTable)
+      .where(and(eq(taskAssigneesTable.taskId, task.id), eq(taskAssigneesTable.userId, req.user!.id)));
+    if (!assignment) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
   }
   res.json(await serializeTask(task));
 });
@@ -213,10 +316,12 @@ router.patch("/tasks/:id", requireRole("owner", "deputy"), async (req, res): Pro
   const groupId = req.user!.groupId;
   if (groupId == null) { res.status(403).json({ error: "No active group" }); return; }
 
-  const updateData: Record<string, unknown> = { ...parsed.data };
-  if (parsed.data.deadline) {
-    updateData.deadline = new Date(parsed.data.deadline);
-  }
+  const updateData: Record<string, unknown> = {};
+  if (parsed.data.title) updateData.title = parsed.data.title;
+  if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
+  if (parsed.data.deadline) updateData.deadline = new Date(parsed.data.deadline);
+
+  const newAssigneeIds = resolveAssigneeIds(parsed.data as any);
 
   const [task] = await db
     .update(tasksTable)
@@ -228,6 +333,16 @@ router.patch("/tasks/:id", requireRole("owner", "deputy"), async (req, res): Pro
     res.status(404).json({ error: "Task not found" });
     return;
   }
+
+  // Sync assignees if provided
+  if (newAssigneeIds && newAssigneeIds.length > 0) {
+    const newlyAdded = await syncTaskAssignees(task.id, newAssigneeIds);
+    for (const aId of newlyAdded) {
+      await createNotification(aId, "task_assigned", `You have been assigned the task: "${task.title}"`, task.id);
+      await sendPushToUser(aId, "Task Assigned", `You've been assigned: "${task.title}"`, task.id);
+    }
+  }
+
   res.json(await serializeTask(task));
 });
 
@@ -243,9 +358,17 @@ router.patch("/tasks/:id/complete", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Task not found" });
     return;
   }
-  if (req.user!.role === "member" && task.assigneeId !== req.user!.id) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
+
+  // Members can complete if they are an assignee (via junction table)
+  if (req.user!.role === "member") {
+    const [assigneeRow] = await db
+      .select()
+      .from(taskAssigneesTable)
+      .where(and(eq(taskAssigneesTable.taskId, task.id), eq(taskAssigneesTable.userId, req.user!.id)));
+    if (!assigneeRow) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
   }
 
   const [updated] = await db
@@ -292,7 +415,15 @@ router.patch("/tasks/:id/approve", requireRole("owner", "deputy"), async (req, r
     .where(and(eq(tasksTable.id, params.data.id), eq(tasksTable.teamId, groupId!)))
     .returning();
 
-  await createNotification(task.assigneeId, "task_approved", `Your task "${task.title}" has been approved`, task.id);
+  // Notify all assignees
+  const assigneeRows = await db
+    .select({ userId: taskAssigneesTable.userId })
+    .from(taskAssigneesTable)
+    .where(eq(taskAssigneesTable.taskId, task.id));
+  for (const row of assigneeRows) {
+    await createNotification(row.userId, "task_approved", `Your task "${task.title}" has been approved`, task.id);
+    await sendPushToUser(row.userId, "Task Approved", `"${task.title}" was approved`, task.id);
+  }
 
   res.json(await serializeTask(updated));
 });
@@ -316,7 +447,15 @@ router.patch("/tasks/:id/reopen", requireRole("owner", "deputy"), async (req, re
     .where(and(eq(tasksTable.id, params.data.id), eq(tasksTable.teamId, groupId!)))
     .returning();
 
-  await createNotification(task.assigneeId, "task_reopened", `Your task "${task.title}" has been reopened`, task.id);
+  // Notify all assignees
+  const assigneeRows = await db
+    .select({ userId: taskAssigneesTable.userId })
+    .from(taskAssigneesTable)
+    .where(eq(taskAssigneesTable.taskId, task.id));
+  for (const row of assigneeRows) {
+    await createNotification(row.userId, "task_reopened", `Your task "${task.title}" has been reopened`, task.id);
+    await sendPushToUser(row.userId, "Task Reopened", `"${task.title}" was reopened`, task.id);
+  }
 
   res.json(await serializeTask(updated));
 });
@@ -334,14 +473,24 @@ router.post("/tasks/:id/reassign-request", async (req, res): Promise<void> => {
   const task = await loadTaskInGroup(id, groupId);
   if (!task) { res.status(404).json({ error: "Task not found" }); return; }
 
+  // Check requester is an assignee
+  const [requesterAssignment] = await db
+    .select()
+    .from(taskAssigneesTable)
+    .where(and(eq(taskAssigneesTable.taskId, id), eq(taskAssigneesTable.userId, req.user!.id)));
+
+  if (!requesterAssignment && req.user!.role === "member") {
+    res.status(403).json({ error: "You are not an assignee of this task" }); return;
+  }
+
   if (task.status !== "open" && task.status !== "reopened") {
     res.status(400).json({ error: "Can only request reassignment for open or reopened tasks" }); return;
   }
   if (task.reassignStatus === "pending") {
     res.status(400).json({ error: "A reassignment request is already pending" }); return;
   }
-  if (requestedAssigneeId === task.assigneeId) {
-    res.status(400).json({ error: "New assignee must be different from current assignee" }); return;
+  if (requestedAssigneeId === req.user!.id) {
+    res.status(400).json({ error: "You cannot reassign the task to yourself" }); return;
   }
 
   // Ensure new assignee is a member of the same group
@@ -358,7 +507,7 @@ router.post("/tasks/:id/reassign-request", async (req, res): Promise<void> => {
 
   const [updated] = await db
     .update(tasksTable)
-    .set({ reassignToId: requestedAssigneeId, reassignStatus: "pending" })
+    .set({ reassignToId: requestedAssigneeId, reassignFromId: req.user!.id, reassignStatus: "pending" })
     .where(and(eq(tasksTable.id, id), eq(tasksTable.teamId, groupId!)))
     .returning();
 
@@ -395,17 +544,30 @@ router.patch("/tasks/:id/reassign-approve", requireRole("owner", "deputy"), asyn
     res.status(400).json({ error: "No pending reassignment request" }); return;
   }
 
-  const prevAssigneeId = task.assigneeId;
+  // The requesting assignee is tracked in reassignFromId
+  const requestingAssigneeId = task.reassignFromId;
+  const newAssigneeId = task.reassignToId;
+
+  if (!requestingAssigneeId) {
+    res.status(400).json({ error: "Cannot determine who requested reassignment" }); return;
+  }
+
   const [updated] = await db
     .update(tasksTable)
-    .set({ assigneeId: task.reassignToId, reassignToId: null, reassignStatus: null })
+    .set({ reassignToId: null, reassignFromId: null, reassignStatus: null })
     .where(and(eq(tasksTable.id, id), eq(tasksTable.teamId, groupId!)))
     .returning();
 
-  await createNotification(task.reassignToId, "task_assigned", `You have been assigned the task: "${task.title}"`, task.id);
-  await createNotification(prevAssigneeId, "task_assigned", `Your reassignment request for "${task.title}" was approved`, task.id);
-  await sendPushToUser(task.reassignToId, "Task Assigned", `You've been assigned: "${task.title}"`, task.id);
-  await sendPushToUser(prevAssigneeId, "Reassignment Approved", `Your reassignment request for "${task.title}" was approved`, task.id);
+  // Remove the requesting assignee from junction table, add the new one
+  await db.delete(taskAssigneesTable).where(
+    and(eq(taskAssigneesTable.taskId, id), eq(taskAssigneesTable.userId, requestingAssigneeId))
+  );
+  await db.insert(taskAssigneesTable).values({ taskId: id, userId: newAssigneeId }).onConflictDoNothing();
+
+  await createNotification(newAssigneeId, "task_assigned", `You have been assigned the task: "${task.title}"`, task.id);
+  await createNotification(requestingAssigneeId, "task_assigned", `Your reassignment request for "${task.title}" was approved`, task.id);
+  await sendPushToUser(newAssigneeId, "Task Assigned", `You've been assigned: "${task.title}"`, task.id);
+  await sendPushToUser(requestingAssigneeId, "Reassignment Approved", `Your reassignment request for "${task.title}" was approved`, task.id);
 
   res.json(await serializeTask(updated));
 });
@@ -423,12 +585,15 @@ router.patch("/tasks/:id/reassign-reject", requireRole("owner", "deputy"), async
 
   const [updated] = await db
     .update(tasksTable)
-    .set({ reassignToId: null, reassignStatus: null })
+    .set({ reassignToId: null, reassignFromId: null, reassignStatus: null })
     .where(and(eq(tasksTable.id, id), eq(tasksTable.teamId, groupId!)))
     .returning();
 
-  await createNotification(task.assigneeId, "task_assigned", `Your reassignment request for "${task.title}" was rejected`, task.id);
-  await sendPushToUser(task.assigneeId, "Reassignment Rejected", `Your request to reassign "${task.title}" was not approved`, task.id);
+  // Notify the requester (tracked in reassignFromId)
+  if (task.reassignFromId) {
+    await createNotification(task.reassignFromId, "task_assigned", `Your reassignment request for "${task.title}" was rejected`, task.id);
+    await sendPushToUser(task.reassignFromId, "Reassignment Rejected", `Your request to reassign "${task.title}" was not approved`, task.id);
+  }
 
   res.json(await serializeTask(updated));
 });

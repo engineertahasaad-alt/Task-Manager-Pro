@@ -44,7 +44,9 @@ export default function TaskDetailScreen() {
   const { mutate: sendMsg } = useSendMessage();
 
   const isManager = user?.role === 'owner' || user?.role === 'deputy';
-  const isAssignee = task?.assigneeId === user?.id;
+  const taskAssignees = (task as any)?.assignees as Array<{ id: number; fullName: string }> | undefined;
+  const isAssignee = task?.assigneeId === user?.id ||
+    (taskAssignees && taskAssignees.some((a: any) => a.id === user?.id));
   const status = task?.status;
   const reassignStatus = (task as any)?.reassignStatus;
   const reassignTo = (task as any)?.reassignTo;
@@ -175,7 +177,26 @@ export default function TaskDetailScreen() {
           <Text style={[styles.description, { color: colors.mutedForeground }]}>{task.description}</Text>
 
           <View style={[styles.metaCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {task.assignee ? (
+            {taskAssignees && taskAssignees.length > 0 ? (
+              <View style={styles.metaRow}>
+                <Feather name="users" size={14} color={colors.mutedForeground} />
+                <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>
+                  {taskAssignees.length > 1 ? 'Assignees' : 'Assignee'}
+                </Text>
+                <View style={{ flex: 1, gap: 4 }}>
+                  {taskAssignees.map((a: any) => (
+                    <View key={a.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: colors.primary + '20', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 9, fontWeight: '700' as const, color: colors.primary }}>
+                          {a.fullName?.charAt(0)?.toUpperCase()}
+                        </Text>
+                      </View>
+                      <Text style={[styles.metaValue, { color: colors.foreground }]}>{a.fullName}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : task.assignee ? (
               <View style={styles.metaRow}>
                 <Feather name="user" size={14} color={colors.mutedForeground} />
                 <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Assignee</Text>

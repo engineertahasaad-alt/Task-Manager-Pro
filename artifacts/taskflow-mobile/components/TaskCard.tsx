@@ -3,13 +3,19 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
 
+interface AssigneeUser {
+  id: number;
+  fullName: string;
+}
+
 interface Task {
   id: number;
   title: string;
   description: string;
   status: 'open' | 'completed' | 'approved' | 'reopened';
   deadline: string;
-  assignee?: { id: number; fullName: string } | null;
+  assignee?: AssigneeUser | null;
+  assignees?: AssigneeUser[] | null;
   creator?: { id: number; fullName: string } | null;
   messageCount?: number;
 }
@@ -39,6 +45,46 @@ function formatDeadline(deadline: string) {
     text: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     overdue: false,
   };
+}
+
+function AssigneeAvatarStack({ assignees, assignee, colors }: {
+  assignees?: AssigneeUser[] | null;
+  assignee?: AssigneeUser | null;
+  colors: any;
+}) {
+  const list = (assignees && assignees.length > 0) ? assignees : (assignee ? [assignee] : []);
+  if (list.length === 0) return null;
+
+  const shown = list.slice(0, 3);
+  const extra = list.length - shown.length;
+
+  return (
+    <View style={styles.assigneeStack}>
+      <View style={styles.avatarRow}>
+        {shown.map((u, i) => (
+          <View
+            key={u.id}
+            style={[
+              styles.avatar,
+              { backgroundColor: colors.primary + '20', marginLeft: i > 0 ? -6 : 0, zIndex: shown.length - i },
+            ]}
+          >
+            <Text style={[styles.avatarText, { color: colors.primary }]}>
+              {u.fullName.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        ))}
+        {extra > 0 && (
+          <View style={[styles.avatar, { backgroundColor: '#64748B20', marginLeft: -6, zIndex: 0 }]}>
+            <Text style={[styles.avatarText, { color: '#64748B' }]}>+{extra}</Text>
+          </View>
+        )}
+      </View>
+      <Text style={[styles.assigneeName, { color: colors.mutedForeground }]} numberOfLines={1}>
+        {shown.map(u => u.fullName.split(' ')[0]).join(', ')}{extra > 0 ? ` +${extra}` : ''}
+      </Text>
+    </View>
+  );
 }
 
 export function TaskCard({ task, onPress }: TaskCardProps) {
@@ -84,18 +130,7 @@ export function TaskCard({ task, onPress }: TaskCardProps) {
       ) : null}
 
       <View style={styles.footer}>
-        {task.assignee ? (
-          <View style={styles.assignee}>
-            <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}>
-              <Text style={[styles.avatarText, { color: colors.primary }]}>
-                {task.assignee.fullName.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <Text style={[styles.assigneeName, { color: colors.mutedForeground }]} numberOfLines={1}>
-              {task.assignee.fullName}
-            </Text>
-          </View>
-        ) : <View />}
+        <AssigneeAvatarStack assignees={task.assignees} assignee={task.assignee} colors={colors} />
 
         {task.messageCount != null && task.messageCount > 0 ? (
           <View style={styles.messageCount}>
@@ -167,11 +202,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 6,
   },
-  assignee: {
+  assigneeStack: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     flex: 1,
+  },
+  avatarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   avatar: {
     width: 22,
@@ -179,9 +218,11 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'white',
   },
   avatarText: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '700' as const,
     fontFamily: 'Inter_700Bold',
   },

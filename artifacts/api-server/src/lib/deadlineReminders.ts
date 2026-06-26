@@ -1,4 +1,4 @@
-import { db, tasksTable, notificationsTable, usersTable } from "@workspace/db";
+import { db, tasksTable, notificationsTable, usersTable, taskAssigneesTable } from "@workspace/db";
 import { eq, and, gte, lte, lt, inArray } from "drizzle-orm";
 import { sendPushToUser } from "./pushNotifications";
 import { logger } from "./logger";
@@ -21,11 +21,8 @@ async function checkAndSend(
       id: tasksTable.id,
       title: tasksTable.title,
       deadline: tasksTable.deadline,
-      assigneeId: tasksTable.assigneeId,
-      pref: usersTable[prefCol],
     })
     .from(tasksTable)
-    .innerJoin(usersTable, eq(usersTable.id, tasksTable.assigneeId))
     .where(
       and(
         inArray(tasksTable.status, [...ACTIVE_STATUSES]),
@@ -37,10 +34,8 @@ async function checkAndSend(
 
   for (const task of tasks) {
     try {
-      // Mark sent regardless so we don't retry; skip push if user opted out
+      // Mark sent regardless so we don't retry
       await db.update(tasksTable).set({ [sentCol]: true } as any).where(eq(tasksTable.id, task.id));
-
-      if (!task.pref) continue;
 
       const deadlineStr = new Date(task.deadline).toLocaleTimeString("en-US", {
         hour: "2-digit",
@@ -48,13 +43,24 @@ async function checkAndSend(
         hour12: true,
       });
 
-      await sendPushToUser(task.assigneeId, `⏰ Deadline in ${label}`, `"${task.title}" is due at ${deadlineStr}`, task.id);
-      await db.insert(notificationsTable).values({
-        userId: task.assigneeId,
-        type: "deadline_approaching",
-        message: `Your task "${task.title}" is due in ${label}`,
-        taskId: task.id,
-      });
+      // Get all assignees for this task
+      const assigneeRows = await db
+        .select({ userId: taskAssigneesTable.userId, pref: usersTable[prefCol] })
+        .from(taskAssigneesTable)
+        .innerJoin(usersTable, eq(usersTable.id, taskAssigneesTable.userId))
+        .where(eq(taskAssigneesTable.taskId, task.id));
+
+      for (const assignee of assigneeRows) {
+        if (!assignee.pref) continue;
+
+        await sendPushToUser(assignee.userId, `⏰ Deadline in ${label}`, `"${task.title}" is due at ${deadlineStr}`, task.id);
+        await db.insert(notificationsTable).values({
+          userId: assignee.userId,
+          type: "deadline_approaching",
+          message: `Your task "${task.title}" is due in ${label}`,
+          taskId: task.id,
+        });
+      }
 
       logger.info({ taskId: task.id, label }, "Deadline reminder sent");
     } catch (err) {
@@ -71,11 +77,8 @@ async function checkOverdue() {
       id: tasksTable.id,
       title: tasksTable.title,
       deadline: tasksTable.deadline,
-      assigneeId: tasksTable.assigneeId,
-      pref: usersTable.notifyOverdue,
     })
     .from(tasksTable)
-    .innerJoin(usersTable, eq(usersTable.id, tasksTable.assigneeId))
     .where(
       and(
         inArray(tasksTable.status, [...ACTIVE_STATUSES]),
@@ -88,8 +91,6 @@ async function checkOverdue() {
     try {
       await db.update(tasksTable).set({ overdueReminderSent: true }).where(eq(tasksTable.id, task.id));
 
-      if (!task.pref) continue;
-
       const dateStr = new Date(task.deadline).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
@@ -98,13 +99,24 @@ async function checkOverdue() {
         hour12: true,
       });
 
-      await sendPushToUser(task.assigneeId, "🚨 Task Overdue", `"${task.title}" was due ${dateStr} and hasn't been completed`, task.id);
-      await db.insert(notificationsTable).values({
-        userId: task.assigneeId,
-        type: "deadline_approaching",
-        message: `Your task "${task.title}" is overdue — please complete or request reassignment`,
-        taskId: task.id,
-      });
+      // Get all assignees for this task
+      const assigneeRows = await db
+        .select({ userId: taskAssigneesTable.userId, pref: usersTable.notifyOverdue })
+        .from(taskAssigneesTable)
+        .innerJoin(usersTable, eq(usersTable.id, taskAssigneesTable.userId))
+        .where(eq(taskAssigneesTable.taskId, task.id));
+
+      for (const assignee of assigneeRows) {
+        if (!assignee.pref) continue;
+
+        await sendPushToUser(assignee.userId, "🚨 Task Overdue", `"${task.title}" was due ${dateStr} and hasn't been completed`, task.id);
+        await db.insert(notificationsTable).values({
+          userId: assignee.userId,
+          type: "deadline_approaching",
+          message: `Your task "${task.title}" is overdue — please complete or request reassignment`,
+          taskId: task.id,
+        });
+      }
 
       logger.info({ taskId: task.id }, "Overdue reminder sent");
     } catch (err) {

@@ -7,3 +7,4 @@ export * from "./messages";
 export * from "./notifications";
 export * from "./push_tokens";
 export * from "./webauthn_credentials";
+export { taskAssigneesTable } from "./tasks";

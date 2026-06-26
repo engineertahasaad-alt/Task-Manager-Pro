@@ -8,8 +8,25 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Send, CheckCircle2, XCircle, ArrowLeft, Paperclip, FileIcon, Download, RefreshCw } from "lucide-react";
+import { Send, CheckCircle2, ArrowLeft, Paperclip, FileIcon, Download, RefreshCw, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+function AssigneeAvatarStack({ assignees, assignee }: { assignees?: any[]; assignee?: any }) {
+  const list = assignees && assignees.length > 0 ? assignees : (assignee ? [assignee] : []);
+  if (list.length === 0) return <span className="text-sm text-muted-foreground">Unassigned</span>;
+  return (
+    <div className="flex flex-col gap-1.5">
+      {list.map((u: any, i: number) => (
+        <div key={u.id ?? i} className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-700 shrink-0">
+            {u.fullName?.charAt(0)?.toUpperCase() ?? '?'}
+          </div>
+          <span className="text-sm font-medium">{u.fullName}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function TaskDetail() {
   const { id } = useParams();
@@ -32,7 +49,11 @@ export default function TaskDetail() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isManager = user?.role === 'owner' || user?.role === 'deputy';
-  const isAssignee = user?.id === task?.assigneeId;
+  const assignees = (task as any)?.assignees as any[] | undefined;
+  const isAssignee = user && (
+    task?.assigneeId === user.id ||
+    (assignees && assignees.some((a: any) => a.id === user.id))
+  );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -113,16 +134,21 @@ export default function TaskDetail() {
                   <p className="text-sm whitespace-pre-wrap">{task.description}</p>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  {/* Assignees section */}
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Assignee</h3>
-                    <p className="text-sm font-medium">{task.assignee?.fullName}</p>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+                      <Users className="h-3.5 w-3.5" />
+                      {assignees && assignees.length > 1 ? `Assignees (${assignees.length})` : 'Assignee'}
+                    </h3>
+                    <AssigneeAvatarStack assignees={assignees} assignee={task.assignee} />
                   </div>
+
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-1">Creator</h3>
                     <p className="text-sm font-medium">{task.creator?.fullName}</p>
                   </div>
-                  <div className="col-span-2">
+                  <div>
                     <h3 className="text-sm font-medium text-muted-foreground mb-1">Deadline</h3>
                     <p className="text-sm font-medium">{format(new Date(task.deadline), "MMM d, yyyy h:mm a")}</p>
                   </div>
@@ -144,9 +170,10 @@ export default function TaskDetail() {
                 )}
 
                 <div className="pt-4 border-t space-y-2">
-                  {task.status === 'open' && isAssignee && (
+                  {(task.status === 'open' || task.status === 'reopened') && isAssignee && (
                     <Button className="w-full" onClick={() => handleStatusChange(completeMutation, "marked complete")}>
-                      <CheckCircle2 className="mr-2 h-4 w-4" /> Mark Complete
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      {task.status === 'reopened' ? 'Resubmit as Complete' : 'Mark Complete'}
                     </Button>
                   )}
                   {task.status === 'completed' && isManager && (
@@ -159,9 +186,9 @@ export default function TaskDetail() {
                       </Button>
                     </>
                   )}
-                  {task.status === 'reopened' && isAssignee && (
-                    <Button className="w-full" onClick={() => handleStatusChange(completeMutation, "marked complete")}>
-                      <CheckCircle2 className="mr-2 h-4 w-4" /> Resubmit as Complete
+                  {task.status === 'approved' && isManager && (
+                    <Button variant="outline" className="w-full text-orange-600 hover:bg-orange-50" onClick={() => handleStatusChange(reopenMutation, "reopened")}>
+                      <RefreshCw className="mr-2 h-4 w-4" /> Reopen Task
                     </Button>
                   )}
                 </div>

@@ -111,6 +111,7 @@ export async function runMigrations() {
     `);
 
     await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reassign_to_id INTEGER REFERENCES users(id);`);
+    await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reassign_from_id INTEGER REFERENCES users(id);`);
     await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reassign_status TEXT CHECK (reassign_status IN ('pending', 'approved', 'rejected'));`);
     await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reminder_24h_sent BOOLEAN NOT NULL DEFAULT FALSE;`);
     await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reminder_1h_sent BOOLEAN NOT NULL DEFAULT FALSE;`);
@@ -150,6 +151,51 @@ export async function runMigrations() {
       WHERE u.team_id IS NOT NULL
       ON CONFLICT (user_id, group_id) DO NOTHING;
     `);
+
+    // Phase 2b: task_assignees junction table for multi-assignee support
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS task_assignees (
+        id SERIAL PRIMARY KEY,
+        task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (task_id, user_id)
+      );
+    `);
+
+    // Migrate existing tasks: populate task_assignees from assignee_id
+    await pool.query(`
+      INSERT INTO task_assignees (task_id, user_id, assigned_at)
+      SELECT id, assignee_id, created_at
+      FROM tasks
+      WHERE assignee_id IS NOT NULL
+      ON CONFLICT (task_id, user_id) DO NOTHING;
+    `);
+
+    // Drop legacy assignee_id column now that task_assignees is the source of truth
+    // We first need to drop any FK constraint referencing assignee_id, then the column itself
+    await pool.query(`
+      DO $$
+      DECLARE
+        constraint_name text;
+      BEGIN
+        SELECT tc.constraint_name INTO constraint_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name
+          AND tc.table_schema = kcu.table_schema
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND tc.table_name = 'tasks'
+          AND kcu.column_name = 'assignee_id'
+        LIMIT 1;
+
+        IF constraint_name IS NOT NULL THEN
+          EXECUTE format('ALTER TABLE tasks DROP CONSTRAINT %I', constraint_name);
+        END IF;
+      END;
+      $$;
+    `);
+    await pool.query(`ALTER TABLE tasks DROP COLUMN IF EXISTS assignee_id;`);
 
     await initVapidKeys();
 

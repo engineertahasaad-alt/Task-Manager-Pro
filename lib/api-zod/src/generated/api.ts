@@ -277,6 +277,17 @@ export const ListTasksResponseItem = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),
@@ -327,7 +338,8 @@ export const ListTasksResponse = zod.array(ListTasksResponseItem)
 export const CreateTaskBody = zod.object({
   "title": zod.string(),
   "description": zod.string(),
-  "assigneeId": zod.number(),
+  "assigneeId": zod.number().optional(),
+  "assigneeIds": zod.array(zod.number()).optional(),
   "deadline": zod.string()
 })
 
@@ -355,6 +367,17 @@ export const GetTaskResponse = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),
@@ -409,6 +432,7 @@ export const UpdateTaskBody = zod.object({
   "title": zod.string().optional(),
   "description": zod.string().optional(),
   "assigneeId": zod.number().optional(),
+  "assigneeIds": zod.array(zod.number()).optional(),
   "deadline": zod.string().optional()
 })
 
@@ -428,6 +452,17 @@ export const UpdateTaskResponse = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),
@@ -494,6 +529,17 @@ export const CompleteTaskResponse = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),
@@ -560,6 +606,17 @@ export const ApproveTaskResponse = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),
@@ -626,6 +683,17 @@ export const ReopenTaskResponse = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),
@@ -696,6 +764,17 @@ export const RequestReassignmentResponse = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),
@@ -762,6 +841,17 @@ export const ApproveReassignmentResponse = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),
@@ -828,6 +918,17 @@ export const RejectReassignmentResponse = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),
@@ -1045,6 +1146,17 @@ export const GetMyTasksResponse = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),
@@ -1102,6 +1214,17 @@ export const GetMyTasksResponse = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),
@@ -1159,6 +1282,17 @@ export const GetMyTasksResponse = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),
@@ -1233,6 +1367,17 @@ export const GetDailyReportResponse = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),
@@ -1310,6 +1455,17 @@ export const GetEmployeeReportResponse = zod.object({
   "teamId": zod.number().nullish(),
   "createdAt": zod.string()
 }).optional(),
+  "assignees": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "mobile": zod.string(),
+  "role": zod.enum(['owner', 'deputy', 'member']),
+  "isActive": zod.boolean(),
+  "mustChangePassword": zod.boolean(),
+  "groupId": zod.number().nullish(),
+  "teamId": zod.number().nullish(),
+  "createdAt": zod.string()
+})).optional(),
   "creatorId": zod.number(),
   "creator": zod.object({
   "id": zod.number(),

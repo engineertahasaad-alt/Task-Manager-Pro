@@ -10,6 +10,32 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Filter, Clock } from "lucide-react";
 import { format } from "date-fns";
 
+function AssigneeAvatars({ assignees, assignee }: { assignees?: any[]; assignee?: any }) {
+  const list = assignees && assignees.length > 0 ? assignees : (assignee ? [assignee] : []);
+  if (list.length === 0) return <span className="text-xs text-muted-foreground">Unassigned</span>;
+  const shown = list.slice(0, 3);
+  const extra = list.length - shown.length;
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="flex -space-x-1.5">
+        {shown.map((u: any, i: number) => (
+          <div key={u.id ?? i} title={u.fullName} className="h-6 w-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-semibold text-indigo-700">
+            {u.fullName?.charAt(0)?.toUpperCase() ?? '?'}
+          </div>
+        ))}
+        {extra > 0 && (
+          <div className="h-6 w-6 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-[10px] font-semibold text-gray-500">
+            +{extra}
+          </div>
+        )}
+      </div>
+      <span className="text-xs text-muted-foreground truncate max-w-[120px]">
+        {shown.map((u: any) => u.fullName?.split(' ')[0]).join(', ')}{extra > 0 ? ` +${extra}` : ''}
+      </span>
+    </div>
+  );
+}
+
 export default function Tasks() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -111,17 +137,12 @@ export default function Tasks() {
                           <p className="text-sm text-gray-600 line-clamp-2">{task.description}</p>
                         </div>
                         
-                        <div className="flex flex-col items-start sm:items-end text-sm text-gray-500 gap-1 sm:min-w-[140px]">
+                        <div className="flex flex-col items-start sm:items-end text-sm text-gray-500 gap-2 sm:min-w-[160px]">
                           <div className="flex items-center gap-1.5">
                             <Clock className="h-3.5 w-3.5" />
                             {format(new Date(task.deadline), "MMM d, yyyy")}
                           </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
-                              {task.assignee?.fullName?.charAt(0) || '?'}
-                            </div>
-                            <span className="text-xs">{task.assignee?.fullName || 'Unassigned'}</span>
-                          </div>
+                          <AssigneeAvatars assignees={(task as any).assignees} assignee={task.assignee} />
                         </div>
                       </div>
                     </CardContent>

@@ -8,16 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppLayout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
+import { Check, X } from "lucide-react";
 
 const taskSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
-  assigneeId: z.coerce.number().min(1, "Assignee is required"),
+  assigneeIds: z.array(z.number()).min(1, "At least one assignee is required"),
   deadlineDate: z.string().min(1, "Deadline date is required"),
   deadlineTime: z.string().min(1, "Deadline time is required"),
 });
@@ -31,7 +31,7 @@ export default function NewTask() {
 
   const form = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
-    defaultValues: { title: "", description: "", assigneeId: 0, deadlineDate: format(new Date(), "yyyy-MM-dd"), deadlineTime: "17:00" },
+    defaultValues: { title: "", description: "", assigneeIds: [], deadlineDate: format(new Date(), "yyyy-MM-dd"), deadlineTime: "17:00" },
   });
 
   const uploadFile = async (taskId: number, file: File) => {
@@ -56,9 +56,9 @@ export default function NewTask() {
       data: {
         title: values.title,
         description: values.description,
-        assigneeId: values.assigneeId,
+        assigneeIds: values.assigneeIds,
         deadline,
-      }
+      } as any
     }, {
       onSuccess: async (task) => {
         if (selectedFile) {
@@ -73,12 +73,21 @@ export default function NewTask() {
     });
   };
 
+  const toggleAssignee = (userId: number, current: number[]) => {
+    if (current.includes(userId)) {
+      return current.filter(id => id !== userId);
+    }
+    return [...current, userId];
+  };
+
+  const activeUsers = users?.filter(u => u.isActive) ?? [];
+
   return (
     <AppLayout>
       <div className="max-w-2xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Create Task</h1>
-          <p className="text-muted-foreground">Assign a new task to a team member.</p>
+          <p className="text-muted-foreground">Assign a new task to one or more team members.</p>
         </div>
 
         <Card>
@@ -99,25 +108,48 @@ export default function NewTask() {
                     <FormMessage />
                   </FormItem>
                 )} />
-                
-                <FormField control={form.control} name="assigneeId" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Assignee</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value ? String(field.value) : undefined}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select team member" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {users?.filter(u => u.isActive).map(u => (
-                          <SelectItem key={u.id} value={String(u.id)}>{u.fullName} ({u.role})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+
+                <FormField
+                  control={form.control}
+                  name="assigneeIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assignees <span className="text-muted-foreground font-normal">(select one or more)</span></FormLabel>
+                      <div className="border rounded-lg divide-y overflow-hidden">
+                        {usersLoading ? (
+                          <div className="p-4 text-sm text-muted-foreground">Loading members...</div>
+                        ) : activeUsers.length === 0 ? (
+                          <div className="p-4 text-sm text-muted-foreground">No active members</div>
+                        ) : activeUsers.map(u => {
+                          const isSelected = field.value.includes(u.id);
+                          return (
+                            <button
+                              key={u.id}
+                              type="button"
+                              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 ${isSelected ? 'bg-indigo-50' : ''}`}
+                              onClick={() => field.onChange(toggleAssignee(u.id, field.value))}
+                            >
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${isSelected ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                                {isSelected ? <Check className="h-4 w-4" /> : u.fullName.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{u.fullName}</p>
+                                <p className="text-xs text-muted-foreground capitalize">{u.role}</p>
+                              </div>
+                              {isSelected && <span className="text-xs font-medium text-indigo-600 shrink-0">Selected</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {field.value.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1.5">
+                          {field.value.length} {field.value.length === 1 ? 'person' : 'people'} selected
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField control={form.control} name="deadlineDate" render={({ field }) => (

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, tasksTable, usersTable, groupMembershipsTable } from "@workspace/db";
+import { db, tasksTable, usersTable, groupMembershipsTable, taskAssigneesTable } from "@workspace/db";
 import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import { GetDashboardSummaryQueryParams, GetWorkloadByEmployeeQueryParams } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
@@ -40,13 +40,22 @@ router.get("/dashboard/summary", requireRole("owner", "deputy"), async (req, res
 
   const conditions: any[] = [];
   if (groupId != null) conditions.push(eq(tasksTable.teamId, groupId));
-  if (assigneeId) conditions.push(eq(tasksTable.assigneeId, assigneeId));
   if (range) {
     conditions.push(gte(tasksTable.createdAt, range.start));
     conditions.push(lte(tasksTable.createdAt, range.end));
   }
 
-  const allTasks = await db.select().from(tasksTable).where(conditions.length ? and(...conditions) : undefined);
+  let allTasks = await db.select().from(tasksTable).where(conditions.length ? and(...conditions) : undefined);
+
+  // Filter by assignee via junction table if specified
+  if (assigneeId) {
+    const assigneeTaskIds = await db
+      .select({ taskId: taskAssigneesTable.taskId })
+      .from(taskAssigneesTable)
+      .where(eq(taskAssigneesTable.userId, assigneeId));
+    const ids = new Set(assigneeTaskIds.map(r => r.taskId));
+    allTasks = allTasks.filter(t => ids.has(t.id));
+  }
 
   const total    = allTasks.length;
   const open     = allTasks.filter(t => t.status === "open" || t.status === "reopened").length;
@@ -92,7 +101,18 @@ router.get("/dashboard/workload", requireRole("owner", "deputy"), async (req, re
     .where(inArray(usersTable.id, memberIds));
 
   const workload = await Promise.all(members.map(async (user) => {
-    const conds: any[] = [eq(tasksTable.assigneeId, user.id)];
+    // Get all tasks this member is assigned to (via junction table)
+    const assigneeRows = await db
+      .select({ taskId: taskAssigneesTable.taskId })
+      .from(taskAssigneesTable)
+      .where(eq(taskAssigneesTable.userId, user.id));
+
+    if (assigneeRows.length === 0) {
+      return { userId: user.id, fullName: user.fullName, total: 0, open: 0, completed: 0, approved: 0, overdue: 0 };
+    }
+
+    const taskIds = assigneeRows.map(r => r.taskId);
+    const conds: any[] = [inArray(tasksTable.id, taskIds)];
     if (groupId != null) conds.push(eq(tasksTable.teamId, groupId));
     if (range) {
       conds.push(gte(tasksTable.createdAt, range.start));
@@ -119,8 +139,20 @@ router.get("/dashboard/my-tasks", async (req, res): Promise<void> => {
   const now = new Date();
   const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
 
+  // Get all task IDs this user is assigned to via junction table
+  const assigneeRows = await db
+    .select({ taskId: taskAssigneesTable.taskId })
+    .from(taskAssigneesTable)
+    .where(eq(taskAssigneesTable.userId, userId));
+
+  if (assigneeRows.length === 0) {
+    res.json({ today: [], upcoming: [], overdue: [] });
+    return;
+  }
+
+  const taskIds = assigneeRows.map(r => r.taskId);
   const conds: any[] = [
-    eq(tasksTable.assigneeId, userId),
+    inArray(tasksTable.id, taskIds),
     inArray(tasksTable.status, ["open", "reopened", "completed"]),
   ];
   if (groupId != null) conds.push(eq(tasksTable.teamId, groupId));

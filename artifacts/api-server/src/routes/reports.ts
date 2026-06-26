@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, tasksTable, usersTable } from "@workspace/db";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { db, tasksTable, usersTable, taskAssigneesTable } from "@workspace/db";
+import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import { GetDailyReportQueryParams, GetEmployeeReportQueryParams } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeTask } from "./tasks";
@@ -44,9 +44,34 @@ router.get("/reports/employee", async (req, res): Promise<void> => {
   const now = new Date();
   const groupId = req.user!.groupId;
 
+  let taskIds: number[] | null = null;
+
+  // Filter by employee via junction table so all assignees (not just primary) are included
+  if (employeeId) {
+    const assigneeRows = await db
+      .select({ taskId: taskAssigneesTable.taskId })
+      .from(taskAssigneesTable)
+      .where(eq(taskAssigneesTable.userId, employeeId));
+    taskIds = assigneeRows.map(r => r.taskId);
+    // If employee has no tasks, return empty result immediately
+    if (taskIds.length === 0) {
+      let employeeName: string | null = null;
+      const [emp] = await db.select().from(usersTable).where(eq(usersTable.id, employeeId));
+      employeeName = emp?.fullName ?? null;
+      res.json({
+        title: `Employee Report${employeeName ? ` — ${employeeName}` : ""}`,
+        period: startDate && endDate ? `${startDate} to ${endDate}` : "All time",
+        total: 0, completed: 0, approved: 0, overdue: 0,
+        tasks: [],
+        employeeName,
+      });
+      return;
+    }
+  }
+
   const conditions: any[] = [];
   if (groupId != null) conditions.push(eq(tasksTable.teamId, groupId));
-  if (employeeId) conditions.push(eq(tasksTable.assigneeId, employeeId));
+  if (taskIds !== null) conditions.push(inArray(tasksTable.id, taskIds));
   if (startDate) conditions.push(gte(tasksTable.createdAt, new Date(startDate)));
   if (endDate) {
     const end = new Date(endDate); end.setHours(23, 59, 59, 999);

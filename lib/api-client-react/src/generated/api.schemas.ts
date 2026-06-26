@@ -173,6 +173,7 @@ export interface Task {
   description: string;
   assigneeId: number;
   assignee?: User;
+  assignees?: User[];
   creatorId: number;
   creator?: User;
   deadline: string;
@@ -195,7 +196,8 @@ export interface ReassignRequestInput {
 export interface TaskInput {
   title: string;
   description: string;
-  assigneeId: number;
+  assigneeId?: number;
+  assigneeIds?: number[];
   deadline: string;
 }
 
@@ -203,6 +205,7 @@ export interface TaskUpdate {
   title?: string;
   description?: string;
   assigneeId?: number;
+  assigneeIds?: number[];
   deadline?: string;
 }
 

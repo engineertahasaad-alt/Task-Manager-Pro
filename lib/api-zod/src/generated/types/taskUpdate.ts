@@ -10,5 +10,6 @@ export interface TaskUpdate {
   title?: string;
   description?: string;
   assigneeId?: number;
+  assigneeIds?: number[];
   deadline?: string;
 }

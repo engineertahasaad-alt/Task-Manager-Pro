@@ -21,16 +21,22 @@ export default function CreateTaskScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
-  const [assigneeId, setAssigneeId] = useState<number | null>(null);
+  const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const topPadding = Platform.OS === 'web' ? 67 : insets.top + 10;
 
+  function toggleAssignee(userId: number) {
+    setAssigneeIds(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  }
+
   async function handleCreate() {
     if (!title.trim()) { setError('Title is required'); return; }
     if (!deadline.trim()) { setError('Deadline is required'); return; }
-    if (!assigneeId) { setError('Please select an assignee'); return; }
+    if (assigneeIds.length === 0) { setError('Please select at least one assignee'); return; }
 
     const deadlineDate = new Date(deadline);
     if (isNaN(deadlineDate.getTime())) { setError('Invalid date format. Use YYYY-MM-DD'); return; }
@@ -43,8 +49,8 @@ export default function CreateTaskScreen() {
           title: title.trim(),
           description: description.trim(),
           deadline: deadlineDate.toISOString(),
-          assigneeId,
-        }
+          assigneeIds,
+        } as any
       });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ['listTasks'] });
@@ -117,27 +123,53 @@ export default function CreateTaskScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.foreground }]}>Assignee *</Text>
+          <Text style={[styles.label, { color: colors.foreground }]}>
+            Assignees *{' '}
+            {assigneeIds.length > 0 && (
+              <Text style={{ color: colors.primary, fontSize: 13 }}>
+                ({assigneeIds.length} selected)
+              </Text>
+            )}
+          </Text>
           <View style={[styles.assigneeList, { borderColor: colors.border }]}>
-            {(users ?? []).map(u => (
-              <TouchableOpacity
-                key={u.id}
-                style={[
-                  styles.assigneeRow,
-                  { borderBottomColor: colors.border },
-                  assigneeId === u.id && { backgroundColor: colors.primary + '15' },
-                ]}
-                onPress={() => setAssigneeId(u.id)}
-              >
-                <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}>
-                  <Text style={[styles.avatarText, { color: colors.primary }]}>{u.fullName.charAt(0)}</Text>
-                </View>
-                <Text style={[styles.assigneeName, { color: colors.foreground }]}>{u.fullName}</Text>
-                {assigneeId === u.id ? (
-                  <Feather name="check" size={16} color={colors.primary} />
-                ) : null}
-              </TouchableOpacity>
-            ))}
+            {(users ?? []).map(u => {
+              const isSelected = assigneeIds.includes(u.id);
+              return (
+                <TouchableOpacity
+                  key={u.id}
+                  style={[
+                    styles.assigneeRow,
+                    { borderBottomColor: colors.border },
+                    isSelected && { backgroundColor: colors.primary + '12' },
+                  ]}
+                  onPress={() => toggleAssignee(u.id)}
+                >
+                  <View style={[
+                    styles.avatar,
+                    { backgroundColor: isSelected ? colors.primary : colors.primary + '20' },
+                  ]}>
+                    {isSelected ? (
+                      <Feather name="check" size={13} color="#fff" />
+                    ) : (
+                      <Text style={[styles.avatarText, { color: colors.primary }]}>
+                        {u.fullName.charAt(0)}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.assigneeName, { color: colors.foreground }]}>{u.fullName}</Text>
+                    <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: 'Inter_400Regular', textTransform: 'capitalize' }}>
+                      {u.role}
+                    </Text>
+                  </View>
+                  {isSelected && (
+                    <Text style={{ fontSize: 12, color: colors.primary, fontFamily: 'Inter_500Medium' }}>
+                      Selected
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </ScrollView>

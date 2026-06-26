@@ -9,6 +9,7 @@
 export interface TaskInput {
   title: string;
   description: string;
-  assigneeId: number;
+  assigneeId?: number;
+  assigneeIds?: number[];
   deadline: string;
 }

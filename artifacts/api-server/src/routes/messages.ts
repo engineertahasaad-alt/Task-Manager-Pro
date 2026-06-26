@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, messagesTable, tasksTable, usersTable, notificationsTable, groupMembershipsTable } from "@workspace/db";
+import { db, messagesTable, tasksTable, usersTable, notificationsTable, groupMembershipsTable, taskAssigneesTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import { ListMessagesParams, SendMessageParams, SendMessageBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
@@ -92,13 +92,20 @@ router.post("/tasks/:id/messages", async (req, res): Promise<void> => {
   const isManager = senderRole === "owner" || senderRole === "deputy";
 
   if (isManager) {
-    if (task.assigneeId !== sender.id) {
-      await db.insert(notificationsTable).values({
-        userId: task.assigneeId,
-        type: "task_assigned",
-        message: `${sender.fullName} sent you a message on task: "${task.title}"`,
-        taskId: task.id,
-      });
+    // Notify all assignees (except the sender if they happen to be one)
+    const assigneeRows = await db
+      .select({ userId: taskAssigneesTable.userId })
+      .from(taskAssigneesTable)
+      .where(eq(taskAssigneesTable.taskId, task.id));
+    for (const row of assigneeRows) {
+      if (row.userId !== sender.id) {
+        await db.insert(notificationsTable).values({
+          userId: row.userId,
+          type: "task_assigned",
+          message: `${sender.fullName} sent you a message on task: "${task.title}"`,
+          taskId: task.id,
+        });
+      }
     }
   } else {
     // Notify all managers in this group (not the sender)

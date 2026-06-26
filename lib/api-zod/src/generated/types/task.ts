@@ -16,6 +16,7 @@ export interface Task {
   description: string;
   assigneeId: number;
   assignee?: User;
+  assignees?: User[];
   creatorId: number;
   creator?: User;
   deadline: string;
