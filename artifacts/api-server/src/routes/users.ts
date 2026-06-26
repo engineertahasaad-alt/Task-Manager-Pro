@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { db, usersTable, teamsTable, groupMembershipsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { CreateUserBody, UpdateUserBody, GetUserParams, UpdateUserParams, DisableUserParams, ResetUserPasswordBody, ResetUserPasswordParams } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeUser } from "./auth";
@@ -11,7 +11,54 @@ const router = Router();
 router.use(requireAuth);
 
 router.get("/users", async (req, res): Promise<void> => {
-  const groupId = req.user!.groupId;
+  const activeGroupId = req.user!.groupId;
+
+  // If a targetGroupId is provided, only managers of that group may request it (for delegation)
+  const requestedGroupIdRaw = req.query.groupId;
+  const targetGroupId = requestedGroupIdRaw != null ? parseInt(String(requestedGroupIdRaw), 10) : null;
+
+  if (targetGroupId != null && !isNaN(targetGroupId) && targetGroupId !== activeGroupId) {
+    // Verify requester is an active manager (owner or deputy) in the requested target group
+    const [managerMembership] = await db
+      .select()
+      .from(groupMembershipsTable)
+      .where(
+        and(
+          eq(groupMembershipsTable.userId, req.user!.id),
+          eq(groupMembershipsTable.groupId, targetGroupId),
+          inArray(groupMembershipsTable.role, ["owner", "deputy"]),
+          eq(groupMembershipsTable.isActive, true)
+        )
+      );
+    if (!managerMembership) {
+      res.status(403).json({ error: "You are not a manager in the requested group" });
+      return;
+    }
+
+    const memberships = await db
+      .select()
+      .from(groupMembershipsTable)
+      .where(
+        and(
+          eq(groupMembershipsTable.groupId, targetGroupId),
+          eq(groupMembershipsTable.isActive, true),
+          eq(groupMembershipsTable.pendingApproval, false)
+        )
+      );
+    const userIds = memberships.map((m) => m.userId);
+    if (userIds.length === 0) { res.json([]); return; }
+    const users = await db.select().from(usersTable).orderBy(usersTable.fullName);
+    const filtered = users.filter((u) => userIds.includes(u.id));
+    const membershipMap = new Map(memberships.map((m) => [m.userId, m]));
+    res.json(filtered.map((u) => {
+      const mem = membershipMap.get(u.id);
+      return serializeUser(u, mem?.role, targetGroupId);
+    }));
+    return;
+  }
+
+  // Default: return members of the requester's active group
+  const groupId = activeGroupId;
   if (groupId == null) {
     res.json([]);
     return;

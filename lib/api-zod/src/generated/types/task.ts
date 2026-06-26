@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Attachment } from './attachment';
+import type { DelegatedTaskSummary } from './delegatedTaskSummary';
 import type { TaskReassignStatus } from './taskReassignStatus';
 import type { TaskStatus } from './taskStatus';
 import type { User } from './user';
@@ -21,6 +22,9 @@ export interface Task {
   creator?: User;
   deadline: string;
   status: TaskStatus;
+  /** @nullable */
+  parentTaskId?: number | null;
+  delegatedTasks?: DelegatedTaskSummary[];
   /** @nullable */
   reassignToId?: number | null;
   reassignTo?: User;

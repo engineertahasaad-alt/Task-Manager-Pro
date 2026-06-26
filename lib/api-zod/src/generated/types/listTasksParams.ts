@@ -23,4 +23,9 @@ startDate?: string | null;
  * @nullable
  */
 endDate?: string | null;
+/**
+ * If true, return only tasks the current user has delegated (managers only)
+ * @nullable
+ */
+delegated?: boolean | null;
 };

@@ -133,6 +133,32 @@ export interface UserUpdate {
   role?: UserUpdateRole;
 }
 
+export type DelegatedTaskSummaryStatus = typeof DelegatedTaskSummaryStatus[keyof typeof DelegatedTaskSummaryStatus];
+
+
+export const DelegatedTaskSummaryStatus = {
+  open: 'open',
+  completed: 'completed',
+  approved: 'approved',
+  reopened: 'reopened',
+} as const;
+
+export interface DelegatedTaskSummary {
+  id: number;
+  title: string;
+  status: DelegatedTaskSummaryStatus;
+  assignees: User[];
+  /** @nullable */
+  targetGroupId?: number | null;
+  createdAt: string;
+}
+
+export interface DelegateTaskInput {
+  targetGroupId: number;
+  /** @minItems 1 */
+  assigneeIds: number[];
+}
+
 export type TaskStatus = typeof TaskStatus[keyof typeof TaskStatus];
 
 
@@ -178,6 +204,9 @@ export interface Task {
   creator?: User;
   deadline: string;
   status: TaskStatus;
+  /** @nullable */
+  parentTaskId?: number | null;
+  delegatedTasks?: DelegatedTaskSummary[];
   /** @nullable */
   reassignToId?: number | null;
   reassignTo?: User;
@@ -348,6 +377,11 @@ startDate?: string | null;
  * @nullable
  */
 endDate?: string | null;
+/**
+ * If true, return only tasks the current user has delegated (managers only)
+ * @nullable
+ */
+delegated?: boolean | null;
 };
 
 export type ListTasksStatus = typeof ListTasksStatus[keyof typeof ListTasksStatus];

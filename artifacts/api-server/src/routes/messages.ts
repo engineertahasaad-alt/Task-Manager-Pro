@@ -31,10 +31,16 @@ router.get("/tasks/:id/messages", async (req, res): Promise<void> => {
     return;
   }
 
+  // Collect message IDs to fetch: child task messages + parent task messages (if delegated child)
+  const taskIds: number[] = [params.data.id];
+  if (task.parentTaskId != null) {
+    taskIds.push(task.parentTaskId);
+  }
+
   const messages = await db
     .select()
     .from(messagesTable)
-    .where(eq(messagesTable.taskId, params.data.id))
+    .where(inArray(messagesTable.taskId, taskIds))
     .orderBy(messagesTable.createdAt);
 
   const serialized = await Promise.all(
@@ -49,6 +55,7 @@ router.get("/tasks/:id/messages", async (req, res): Promise<void> => {
         attachmentUrl: m.attachmentUrl ?? null,
         attachmentName: m.attachmentName ?? null,
         createdAt: m.createdAt.toISOString(),
+        fromParentTask: m.taskId !== params.data.id,
       };
     })
   );

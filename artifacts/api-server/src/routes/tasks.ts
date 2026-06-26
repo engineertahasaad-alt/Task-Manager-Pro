@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, tasksTable, usersTable, attachmentsTable, messagesTable, notificationsTable, groupMembershipsTable, taskAssigneesTable } from "@workspace/db";
+import { db, tasksTable, usersTable, attachmentsTable, messagesTable, notificationsTable, groupMembershipsTable, taskAssigneesTable, taskDelegationsTable } from "@workspace/db";
 import { eq, and, gte, lte, inArray, count, sql } from "drizzle-orm";
 import {
   ListTasksQueryParams,
@@ -77,13 +77,44 @@ async function syncTaskAssignees(taskId: number, assigneeIds: number[]): Promise
   return toAdd;
 }
 
-async function serializeTask(task: typeof tasksTable.$inferSelect, includeRelations = true) {
+async function getDelegatedTaskSummaries(parentTaskId: number) {
+  const delegationRows = await db
+    .select()
+    .from(taskDelegationsTable)
+    .where(eq(taskDelegationsTable.originalTaskId, parentTaskId));
+
+  if (delegationRows.length === 0) return [];
+
+  const delegatedTaskIds = delegationRows.map(r => r.delegatedTaskId);
+  const delegatedTasks = await db
+    .select()
+    .from(tasksTable)
+    .where(inArray(tasksTable.id, delegatedTaskIds));
+
+  const summaries = await Promise.all(delegatedTasks.map(async (dt) => {
+    const assignees = await getTaskAssignees(dt.id);
+    const delegation = delegationRows.find(r => r.delegatedTaskId === dt.id);
+    return {
+      id: dt.id,
+      title: dt.title,
+      status: dt.status,
+      assignees,
+      targetGroupId: delegation?.targetGroupId ?? null,
+      createdAt: dt.createdAt.toISOString(),
+    };
+  }));
+
+  return summaries;
+}
+
+async function serializeTask(task: typeof tasksTable.$inferSelect, includeRelations = true, includeDelegated = false) {
   let assignee = undefined;
   let creator = undefined;
   let reassignTo = undefined;
   let attachments: unknown[] = [];
   let messageCount = 0;
   let assignees: unknown[] = [];
+  let delegatedTasks: unknown[] = [];
 
   if (includeRelations) {
     const [creatorRow] = await db.select().from(usersTable).where(eq(usersTable.id, task.creatorId));
@@ -113,9 +144,12 @@ async function serializeTask(task: typeof tasksTable.$inferSelect, includeRelati
     messageCount = msgCount?.count ?? 0;
 
     assignees = await getTaskAssignees(task.id);
-    // Derive legacy assignee/assigneeId from junction table for backward compat
     if (assignees.length > 0) {
       assignee = assignees[0];
+    }
+
+    if (includeDelegated) {
+      delegatedTasks = await getDelegatedTaskSummaries(task.id);
     }
   }
 
@@ -132,6 +166,8 @@ async function serializeTask(task: typeof tasksTable.$inferSelect, includeRelati
     creator,
     deadline: task.deadline.toISOString(),
     status: task.status,
+    parentTaskId: task.parentTaskId ?? null,
+    delegatedTasks,
     reassignToId: task.reassignToId ?? null,
     reassignTo: reassignTo ?? null,
     reassignFromId: task.reassignFromId ?? null,
@@ -181,6 +217,53 @@ router.get("/tasks", async (req, res): Promise<void> => {
   }
 
   const { status, assigneeId, dateFilter, startDate, endDate } = params.data;
+  const delegatedFilter = req.query.delegated === "true";
+
+  // Delegated filter: return tasks the user has delegated, constrained to groups where they
+  // currently hold active manager membership (prevents stale visibility after membership changes)
+  if (delegatedFilter && (req.user!.role === "owner" || req.user!.role === "deputy")) {
+    // Find all groups where the requester is currently an active manager
+    const activeManagerMemberships = await db
+      .select({ groupId: groupMembershipsTable.groupId })
+      .from(groupMembershipsTable)
+      .where(
+        and(
+          eq(groupMembershipsTable.userId, req.user!.id),
+          inArray(groupMembershipsTable.role, ["owner", "deputy"]),
+          eq(groupMembershipsTable.isActive, true)
+        )
+      );
+    const activeGroupIds = activeManagerMemberships.map(m => m.groupId);
+    if (activeGroupIds.length === 0) { res.json([]); return; }
+
+    const delegations = await db
+      .select({ originalTaskId: taskDelegationsTable.originalTaskId })
+      .from(taskDelegationsTable)
+      .where(eq(taskDelegationsTable.delegatedByUserId, req.user!.id));
+
+    if (delegations.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    const originalIds = [...new Set(delegations.map(d => d.originalTaskId))];
+    // Only return tasks that belong to groups where requester currently has active membership
+    const tasks = await db
+      .select()
+      .from(tasksTable)
+      .where(
+        and(
+          inArray(tasksTable.id, originalIds),
+          inArray(tasksTable.teamId, activeGroupIds)
+        )
+      )
+      .orderBy(tasksTable.deadline);
+
+    const serialized = await Promise.all(tasks.map(t => serializeTask(t, true, true)));
+    res.json(serialized);
+    return;
+  }
+
   const conditions = [];
 
   const groupId = req.user!.groupId;
@@ -298,7 +381,108 @@ router.get("/tasks/:id", async (req, res): Promise<void> => {
       return;
     }
   }
-  res.json(await serializeTask(task));
+  res.json(await serializeTask(task, true, true));
+});
+
+router.post("/tasks/:id/delegate", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid task id" }); return; }
+
+  const { targetGroupId, assigneeIds } = req.body ?? {};
+  if (!targetGroupId || typeof targetGroupId !== "number") {
+    res.status(400).json({ error: "targetGroupId is required and must be an integer" }); return;
+  }
+  if (!Array.isArray(assigneeIds) || assigneeIds.length === 0) {
+    res.status(400).json({ error: "assigneeIds must be a non-empty array" }); return;
+  }
+
+  const sourceGroupId = req.user!.groupId;
+  if (sourceGroupId == null) { res.status(403).json({ error: "No active group" }); return; }
+
+  // Enforce cross-group delegation: target group must differ from source group
+  if (targetGroupId === sourceGroupId) {
+    res.status(400).json({ error: "Cannot delegate to the same group; choose a different target group" }); return;
+  }
+
+  // Verify the task exists in the source group
+  const task = await loadTaskInGroup(id, sourceGroupId);
+  if (!task) { res.status(404).json({ error: "Task not found" }); return; }
+
+  // Prevent delegating a task that already is a child
+  if (task.parentTaskId != null) {
+    res.status(400).json({ error: "Cannot delegate a task that is already a delegated child task" }); return;
+  }
+
+  // Verify requesting user is a manager (owner/deputy) in the target group
+  const [targetMembership] = await db
+    .select()
+    .from(groupMembershipsTable)
+    .where(
+      and(
+        eq(groupMembershipsTable.userId, req.user!.id),
+        eq(groupMembershipsTable.groupId, targetGroupId),
+        inArray(groupMembershipsTable.role, ["owner", "deputy"]),
+        eq(groupMembershipsTable.isActive, true)
+      )
+    );
+  if (!targetMembership) {
+    res.status(403).json({ error: "You must be a manager (owner or deputy) in the target group to delegate" }); return;
+  }
+
+  // Verify all assignees are active members of the target group
+  for (const aId of assigneeIds) {
+    if (typeof aId !== "number") { res.status(400).json({ error: "All assigneeIds must be integers" }); return; }
+    const [mem] = await db
+      .select()
+      .from(groupMembershipsTable)
+      .where(and(eq(groupMembershipsTable.userId, aId), eq(groupMembershipsTable.groupId, targetGroupId), eq(groupMembershipsTable.isActive, true)));
+    if (!mem) {
+      res.status(400).json({ error: `User ${aId} is not an active member of the target group` }); return;
+    }
+  }
+
+  // Create the child task in the target group.
+  // Preserve original creator and original creation timestamp so child task context is clear.
+  const [childTask] = await db
+    .insert(tasksTable)
+    .values({
+      title: task.title,
+      description: task.description,
+      creatorId: task.creatorId,
+      teamId: targetGroupId,
+      deadline: task.deadline,
+      status: "open",
+      parentTaskId: task.id,
+      createdAt: task.createdAt,
+    })
+    .returning();
+
+  // Assign members to the child task
+  await db.insert(taskAssigneesTable).values(
+    (assigneeIds as number[]).map(userId => ({ taskId: childTask.id, userId }))
+  ).onConflictDoNothing();
+
+  // Record the delegation event
+  await db.insert(taskDelegationsTable).values({
+    originalTaskId: task.id,
+    delegatedTaskId: childTask.id,
+    delegatedByUserId: req.user!.id,
+    sourceGroupId,
+    targetGroupId,
+  });
+
+  // Notify all assignees of the child task
+  for (const aId of assigneeIds as number[]) {
+    await createNotification(
+      aId,
+      "task_assigned",
+      `You have been assigned a delegated task: "${task.title}"`,
+      childTask.id
+    );
+    await sendPushToUser(aId, "New Delegated Task", `You've been assigned: "${task.title}"`, childTask.id);
+  }
+
+  res.status(201).json(await serializeTask(childTask, true, false));
 });
 
 router.patch("/tasks/:id", requireRole("owner", "deputy"), async (req, res): Promise<void> => {

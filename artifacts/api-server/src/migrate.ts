@@ -163,13 +163,22 @@ export async function runMigrations() {
       );
     `);
 
-    // Migrate existing tasks: populate task_assignees from assignee_id
+    // Migrate existing tasks: populate task_assignees from assignee_id (only if column still exists)
     await pool.query(`
-      INSERT INTO task_assignees (task_id, user_id, assigned_at)
-      SELECT id, assignee_id, created_at
-      FROM tasks
-      WHERE assignee_id IS NOT NULL
-      ON CONFLICT (task_id, user_id) DO NOTHING;
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'tasks' AND column_name = 'assignee_id'
+        ) THEN
+          INSERT INTO task_assignees (task_id, user_id, assigned_at)
+          SELECT id, assignee_id, created_at
+          FROM tasks
+          WHERE assignee_id IS NOT NULL
+          ON CONFLICT (task_id, user_id) DO NOTHING;
+        END IF;
+      END;
+      $$;
     `);
 
     // Drop legacy assignee_id column now that task_assignees is the source of truth
@@ -196,6 +205,21 @@ export async function runMigrations() {
       $$;
     `);
     await pool.query(`ALTER TABLE tasks DROP COLUMN IF EXISTS assignee_id;`);
+
+    // Phase 3: task delegation support
+    await pool.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS parent_task_id INTEGER REFERENCES tasks(id);`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS task_delegations (
+        id SERIAL PRIMARY KEY,
+        original_task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        delegated_task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        delegated_by_user_id INTEGER NOT NULL REFERENCES users(id),
+        source_group_id INTEGER NOT NULL REFERENCES teams(id),
+        target_group_id INTEGER NOT NULL REFERENCES teams(id),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
 
     await initVapidKeys();
 

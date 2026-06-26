@@ -316,6 +316,11 @@ paths:
           in: query
           schema:
             type: ["string", "null"]
+        - name: delegated
+          in: query
+          schema:
+            type: ["boolean", "null"]
+          description: If true, return only tasks the current user has delegated (managers only)
       responses:
         "200":
           description: List of tasks
@@ -441,6 +446,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Task"
+
+  /tasks/{id}/delegate:
+    post:
+      operationId: delegateTask
+      tags: [tasks]
+      summary: Delegate a task to members of another group (manager must belong to both groups)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DelegateTaskInput"
+      responses:
+        "201":
+          description: Delegated child task created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Validation error
+        "403":
+          description: Not a manager in both groups
+        "404":
+          description: Task not found
 
   /tasks/{id}/reassign-request:
     post:
@@ -1036,6 +1072,38 @@ components:
           type: string
           enum: [owner, deputy, member]
 
+    DelegatedTaskSummary:
+      type: object
+      required: [id, title, status, assignees, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        status:
+          type: string
+          enum: [open, completed, approved, reopened]
+        assignees:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        targetGroupId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    DelegateTaskInput:
+      type: object
+      required: [targetGroupId, assigneeIds]
+      properties:
+        targetGroupId:
+          type: integer
+        assigneeIds:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+
     Task:
       type: object
       required: [id, title, description, assigneeId, creatorId, deadline, status, createdAt, updatedAt]
@@ -1063,6 +1131,12 @@ components:
         status:
           type: string
           enum: [open, completed, approved, reopened]
+        parentTaskId:
+          type: ["integer", "null"]
+        delegatedTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/DelegatedTaskSummary"
         reassignToId:
           type: ["integer", "null"]
         reassignTo:

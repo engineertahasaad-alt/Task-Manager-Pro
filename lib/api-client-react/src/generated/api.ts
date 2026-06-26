@@ -23,6 +23,7 @@ import type {
   AuthResponse,
   ChangePasswordInput,
   DashboardSummary,
+  DelegateTaskInput,
   EmployeeWorkload,
   ForgotPasswordInput,
   GetDailyReportParams,
@@ -1610,6 +1611,78 @@ export const useReopenTask = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getReopenTaskMutationOptions(options));
+    }
+
+export const getDelegateTaskUrl = (id: number,) => {
+
+
+
+
+  return `/api/tasks/${id}/delegate`
+}
+
+/**
+ * @summary Delegate a task to members of another group (manager must belong to both groups)
+ */
+export const delegateTask = async (id: number,
+    delegateTaskInput: DelegateTaskInput, options?: RequestInit): Promise<Task> => {
+
+  return customFetch<Task>(getDelegateTaskUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      delegateTaskInput,)
+  }
+);}
+
+
+
+
+export const getDelegateTaskMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof delegateTask>>, TError,{id: number;data: BodyType<DelegateTaskInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof delegateTask>>, TError,{id: number;data: BodyType<DelegateTaskInput>}, TContext> => {
+
+const mutationKey = ['delegateTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof delegateTask>>, {id: number;data: BodyType<DelegateTaskInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  delegateTask(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DelegateTaskMutationResult = NonNullable<Awaited<ReturnType<typeof delegateTask>>>
+    export type DelegateTaskMutationBody = BodyType<DelegateTaskInput>
+    export type DelegateTaskMutationError = ErrorType<void>
+
+    /**
+ * @summary Delegate a task to members of another group (manager must belong to both groups)
+ */
+export const useDelegateTask = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof delegateTask>>, TError,{id: number;data: BodyType<DelegateTaskInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof delegateTask>>,
+        TError,
+        {id: number;data: BodyType<DelegateTaskInput>},
+        TContext
+      > => {
+      return useMutation(getDelegateTaskMutationOptions(options));
     }
 
 export const getRequestReassignmentUrl = (id: number,) => {

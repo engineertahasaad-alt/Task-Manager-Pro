@@ -9,7 +9,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import {
   useGetTask, useCompleteTask, useApproveTask, useReopenTask,
-  useListMessages, useSendMessage, useListUsers,
+  useListMessages, useSendMessage, useListUsers, useDelegateTask,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useColors } from '@/hooks/useColors';
@@ -23,6 +23,234 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   reopened: { label: 'Reopened', color: '#F59E0B', bg: '#F59E0B20' },
 };
 
+function DelegatedTaskRow({ dt, colors }: { dt: any; colors: any }) {
+  const sc = STATUS_CONFIG[dt.status] ?? STATUS_CONFIG.open;
+  return (
+    <TouchableOpacity
+      style={[styles.delegatedRow, { borderColor: colors.border, backgroundColor: colors.card }]}
+      onPress={() => router.push(`/task/${dt.id}` as any)}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.delegatedTitle, { color: colors.foreground }]} numberOfLines={1}>
+          {dt.title}
+        </Text>
+        {dt.assignees && dt.assignees.length > 0 && (
+          <Text style={[styles.delegatedAssignees, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {dt.assignees.map((a: any) => a.fullName).join(', ')}
+          </Text>
+        )}
+      </View>
+      <View style={[styles.delegatedStatusPill, { backgroundColor: sc.bg }]}>
+        <Text style={[styles.delegatedStatusText, { color: sc.color }]}>{sc.label}</Text>
+      </View>
+      <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+    </TouchableOpacity>
+  );
+}
+
+function DelegateModal({
+  taskId,
+  visible,
+  onClose,
+  colors,
+}: {
+  taskId: number;
+  visible: boolean;
+  onClose: () => void;
+  colors: any;
+}) {
+  const { groups } = useAuth();
+  const { user, activeGroupId } = useAuth();
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  const delegateMutation = useDelegateTask();
+  const queryClient = useQueryClient();
+
+  const [step, setStep] = useState<'group' | 'assignees'>('group');
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
+  const [selectedAssignees, setSelectedAssignees] = useState<number[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [delegating, setDelegating] = useState(false);
+
+  const managerGroups = groups.filter(
+    g => (g.role === 'owner' || g.role === 'deputy') && g.id !== activeGroupId
+  );
+
+  async function loadGroupMembers(groupId: number) {
+    setLoadingMembers(true);
+    setSelectedAssignees([]);
+    try {
+      const token = getCurrentToken();
+      const res = await fetch(`https://${domain}/api/users?groupId=${groupId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGroupMembers(data.filter((u: any) => u.isActive));
+      }
+    } catch {
+      setGroupMembers([]);
+    } finally {
+      setLoadingMembers(false);
+    }
+  }
+
+  function handleSelectGroup(gid: number) {
+    setSelectedGroupId(gid);
+    loadGroupMembers(gid);
+    setStep('assignees');
+  }
+
+  function toggleAssignee(uid: number) {
+    setSelectedAssignees(prev =>
+      prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]
+    );
+  }
+
+  async function handleDelegate() {
+    if (!selectedGroupId || selectedAssignees.length === 0) return;
+    setDelegating(true);
+    try {
+      await delegateMutation.mutateAsync({
+        id: taskId,
+        data: { targetGroupId: selectedGroupId, assigneeIds: selectedAssignees },
+      });
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ['getTask'] });
+      onClose();
+      Alert.alert('Success', 'Task delegated successfully');
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to delegate task');
+    } finally {
+      setDelegating(false);
+    }
+  }
+
+  function handleClose() {
+    setStep('group');
+    setSelectedGroupId(null);
+    setGroupMembers([]);
+    setSelectedAssignees([]);
+    onClose();
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {step === 'assignees' && (
+                <TouchableOpacity onPress={() => setStep('group')}>
+                  <Feather name="arrow-left" size={18} color={colors.foreground} />
+                </TouchableOpacity>
+              )}
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+                {step === 'group' ? 'Select Target Group' : 'Select Assignees'}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={handleClose}>
+              <Feather name="x" size={20} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={[styles.modalSubtitle, { color: colors.mutedForeground }]}>
+            {step === 'group'
+              ? 'Choose a group you manage to delegate this task to.'
+              : 'Pick one or more members to assign the delegated task.'}
+          </Text>
+
+          {step === 'group' ? (
+            <FlatList
+              data={managerGroups}
+              keyExtractor={item => String(item.id)}
+              style={{ maxHeight: 320 }}
+              ListEmptyComponent={
+                <Text style={[styles.noMessages, { color: colors.mutedForeground }]}>
+                  You are not a manager in any other group.
+                </Text>
+              }
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.userRow, { borderBottomColor: colors.border }]}
+                  onPress={() => handleSelectGroup(item.id)}
+                >
+                  <View style={[styles.userAvatar, { backgroundColor: '#8B5CF620' }]}>
+                    <Feather name="users" size={16} color="#8B5CF6" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.userName, { color: colors.foreground }]}>{item.name}</Text>
+                    <Text style={[styles.userRole, { color: colors.mutedForeground }]}>{item.role}</Text>
+                  </View>
+                  <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              )}
+            />
+          ) : loadingMembers ? (
+            <ActivityIndicator color={colors.primary} style={{ paddingVertical: 30 }} />
+          ) : (
+            <FlatList
+              data={groupMembers}
+              keyExtractor={item => String(item.id)}
+              style={{ maxHeight: 320 }}
+              ListEmptyComponent={
+                <Text style={[styles.noMessages, { color: colors.mutedForeground }]}>
+                  No active members in this group.
+                </Text>
+              }
+              renderItem={({ item }) => {
+                const selected = selectedAssignees.includes(item.id);
+                return (
+                  <TouchableOpacity
+                    style={[styles.userRow, { borderBottomColor: colors.border }]}
+                    onPress={() => toggleAssignee(item.id)}
+                  >
+                    <View style={[styles.userAvatar, { backgroundColor: colors.primary + '20' }]}>
+                      <Text style={[styles.userAvatarText, { color: colors.primary }]}>
+                        {item.fullName?.charAt(0)?.toUpperCase() ?? '?'}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.userName, { color: colors.foreground }]}>{item.fullName}</Text>
+                      <Text style={[styles.userRole, { color: colors.mutedForeground }]}>{item.role}</Text>
+                    </View>
+                    {selected ? (
+                      <Feather name="check-circle" size={18} color={colors.primary} />
+                    ) : (
+                      <Feather name="circle" size={18} color={colors.mutedForeground} />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          )}
+
+          {step === 'assignees' && selectedAssignees.length > 0 && (
+            <View style={{ padding: 16, paddingTop: 8 }}>
+              <TouchableOpacity
+                style={[styles.delegateBtn, { backgroundColor: '#8B5CF6' }, delegating && { opacity: 0.6 }]}
+                onPress={handleDelegate}
+                disabled={delegating}
+              >
+                {delegating ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Feather name="share-2" size={16} color="#fff" />
+                    <Text style={styles.delegateBtnText}>
+                      Delegate to {selectedAssignees.length} member{selectedAssignees.length > 1 ? 's' : ''}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function TaskDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -32,6 +260,7 @@ export default function TaskDetailScreen() {
   const [message, setMessage] = useState('');
   const [sendingMsg, setSendingMsg] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
+  const [showDelegateModal, setShowDelegateModal] = useState(false);
   const [reassignLoading, setReassignLoading] = useState(false);
 
   const taskId = Number(id);
@@ -43,6 +272,8 @@ export default function TaskDetailScreen() {
   const { mutateAsync: reopen } = useReopenTask();
   const { mutate: sendMsg } = useSendMessage();
 
+  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+
   const isManager = user?.role === 'owner' || user?.role === 'deputy';
   const taskAssignees = (task as any)?.assignees as Array<{ id: number; fullName: string }> | undefined;
   const isAssignee = task?.assigneeId === user?.id ||
@@ -50,9 +281,19 @@ export default function TaskDetailScreen() {
   const status = task?.status;
   const reassignStatus = (task as any)?.reassignStatus;
   const reassignTo = (task as any)?.reassignTo;
-  const reassignToId = (task as any)?.reassignToId;
+  const parentTaskId = (task as any)?.parentTaskId as number | null | undefined;
+  const delegatedTasks = (task as any)?.delegatedTasks as any[] | undefined;
+  const isChildTask = !!parentTaskId;
+  const canDelegate = isManager && !isChildTask;
 
-  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  const canRequestReassign =
+    isAssignee &&
+    (status === 'open' || status === 'reopened') &&
+    reassignStatus !== 'pending';
+
+  const otherUsers = (users ?? []).filter(
+    (u: any) => u.id !== task?.assigneeId && u.id !== user?.id
+  );
 
   async function handleAction(action: 'complete' | 'approve' | 'reopen') {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -147,14 +388,9 @@ export default function TaskDetailScreen() {
 
   const sc = STATUS_CONFIG[task.status] ?? STATUS_CONFIG.open;
 
-  const otherUsers = (users ?? []).filter(
-    (u: any) => u.id !== task.assigneeId && u.id !== user?.id
-  );
-
-  const canRequestReassign =
-    isAssignee &&
-    (status === 'open' || status === 'reopened') &&
-    reassignStatus !== 'pending';
+  const delegatedDone = delegatedTasks
+    ? delegatedTasks.filter((d: any) => d.status === 'approved' || d.status === 'completed').length
+    : 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -166,8 +402,15 @@ export default function TaskDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <View style={[styles.statusPill, { backgroundColor: sc.bg }]}>
-          <Text style={[styles.statusText, { color: sc.color }]}>{sc.label}</Text>
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          {isChildTask && (
+            <View style={[styles.statusPill, { backgroundColor: '#8B5CF620' }]}>
+              <Text style={[styles.statusText, { color: '#8B5CF6' }]}>Delegated</Text>
+            </View>
+          )}
+          <View style={[styles.statusPill, { backgroundColor: sc.bg }]}>
+            <Text style={[styles.statusText, { color: sc.color }]}>{sc.label}</Text>
+          </View>
         </View>
       </View>
 
@@ -203,6 +446,7 @@ export default function TaskDetailScreen() {
                 <Text style={[styles.metaValue, { color: colors.foreground }]}>{task.assignee.fullName}</Text>
               </View>
             ) : null}
+
             {task.creator ? (
               <View style={styles.metaRow}>
                 <Feather name="user-check" size={14} color={colors.mutedForeground} />
@@ -210,6 +454,7 @@ export default function TaskDetailScreen() {
                 <Text style={[styles.metaValue, { color: colors.foreground }]}>{task.creator.fullName}</Text>
               </View>
             ) : null}
+
             <View style={styles.metaRow}>
               <Feather name="calendar" size={14} color={colors.mutedForeground} />
               <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Deadline</Text>
@@ -217,6 +462,16 @@ export default function TaskDetailScreen() {
                 {new Date(task.deadline).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
               </Text>
             </View>
+
+            {isChildTask && (
+              <View style={styles.metaRow}>
+                <Feather name="arrow-up-right" size={14} color="#8B5CF6" />
+                <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Parent</Text>
+                <TouchableOpacity onPress={() => router.push(`/task/${parentTaskId}` as any)}>
+                  <Text style={[styles.metaValue, { color: '#8B5CF6' }]}>View parent task →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           {reassignStatus === 'pending' && reassignTo ? (
@@ -288,7 +543,44 @@ export default function TaskDetailScreen() {
                 </TouchableOpacity>
               </>
             ) : null}
+
+            {canDelegate ? (
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: '#8B5CF6' }]}
+                onPress={() => setShowDelegateModal(true)}
+              >
+                <Feather name="share-2" size={16} color="#fff" />
+                <Text style={styles.actionBtnText}>Delegate</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
+
+          {delegatedTasks && delegatedTasks.length > 0 && (
+            <View style={[styles.delegatedSection, { borderColor: colors.border, backgroundColor: colors.card }]}>
+              <View style={styles.delegatedHeader}>
+                <Feather name="share-2" size={14} color="#8B5CF6" />
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                  Delegated Tasks ({delegatedTasks.length})
+                </Text>
+              </View>
+              {delegatedTasks.map((dt: any) => (
+                <DelegatedTaskRow key={dt.id} dt={dt} colors={colors} />
+              ))}
+              <View style={styles.progressContainer}>
+                <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${(delegatedDone / delegatedTasks.length) * 100}%` as any },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.progressText, { color: colors.mutedForeground }]}>
+                  {delegatedDone}/{delegatedTasks.length} complete
+                </Text>
+              </View>
+            </View>
+          )}
 
           <View style={styles.messagesSection}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -379,6 +671,13 @@ export default function TaskDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      <DelegateModal
+        taskId={taskId}
+        visible={showDelegateModal}
+        onClose={() => setShowDelegateModal(false)}
+        colors={colors}
+      />
     </View>
   );
 }
@@ -408,6 +707,22 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10, marginBottom: 24, flexWrap: 'wrap' },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
   actionBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  delegatedSection: {
+    borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 20, gap: 8,
+  },
+  delegatedHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  delegatedRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderRadius: 8, borderWidth: 1, padding: 10,
+  },
+  delegatedTitle: { fontSize: 13, fontWeight: '500' as const, fontFamily: 'Inter_500Medium' },
+  delegatedAssignees: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  delegatedStatusPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  delegatedStatusText: { fontSize: 10, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
+  progressContainer: { marginTop: 8, gap: 6 },
+  progressBar: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#22C55E', borderRadius: 3 },
+  progressText: { fontSize: 11, fontFamily: 'Inter_400Regular', textAlign: 'right' },
   messagesSection: { gap: 10 },
   sectionTitle: { fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold', marginBottom: 6 },
   messageBubble: {
@@ -447,4 +762,9 @@ const styles = StyleSheet.create({
   userAvatarText: { fontSize: 16, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
   userName: { fontSize: 15, fontWeight: '500' as const, fontFamily: 'Inter_500Medium' },
   userRole: { fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2, textTransform: 'capitalize' },
+  delegateBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 14, borderRadius: 12,
+  },
+  delegateBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
 });
