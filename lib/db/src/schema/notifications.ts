@@ -8,7 +8,7 @@ export const notificationsTable = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
   type: text("type", {
-    enum: ["task_assigned", "deadline_approaching", "task_completed", "task_approved", "task_reopened"],
+    enum: ["task_assigned", "deadline_approaching", "task_completed", "task_approved", "task_reopened", "join_request"],
   }).notNull(),
   message: text("message").notNull(),
   taskId: integer("task_id").references(() => tasksTable.id, { onDelete: "cascade" }),

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useNotifications } from "@/hooks/use-notifications";
 import { GroupSwitcher } from "@/components/group-switcher";
+import { useQuery } from "@tanstack/react-query";
 
 function NotificationBadge({ count }: { count: number }) {
   if (count === 0) return null;
@@ -23,10 +24,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { unreadCount } = useNotifications(isLoggedIn);
   const isManager = user?.role === "owner" || user?.role === "deputy";
 
+  const { data: joinRequests } = useQuery({
+    queryKey: ["join-requests"],
+    queryFn: async () => {
+      const token = localStorage.getItem("taskaya_token");
+      const res = await fetch("/api/team/join-requests", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return [] as { id: number }[];
+      return res.json() as Promise<{ id: number }[]>;
+    },
+    enabled: isManager && isLoggedIn,
+    refetchInterval: 30_000,
+  });
+  const pendingCount = joinRequests?.length ?? 0;
+
   const navItems = [
     { icon: Home, label: "Dashboard", href: "/dashboard" },
     { icon: CheckSquare, label: "Tasks", href: "/tasks" },
-    ...(isManager ? [{ icon: Users, label: "Team", href: "/team" }] : []),
+    ...(isManager ? [{ icon: Users, label: "Team", href: "/team", badge: pendingCount }] : []),
     { icon: Bell, label: "Notifications", href: "/notifications", badge: unreadCount },
     ...(isManager ? [{ icon: FileText, label: "Reports", href: "/reports" }] : []),
     { icon: Settings, label: "Settings", href: "/settings" },

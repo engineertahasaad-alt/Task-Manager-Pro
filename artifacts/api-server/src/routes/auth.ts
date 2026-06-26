@@ -1,7 +1,8 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, teamsTable, groupMembershipsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, usersTable, teamsTable, groupMembershipsTable, notificationsTable } from "@workspace/db";
+import { eq, and, inArray } from "drizzle-orm";
+import { sendPushToUser } from "../lib/pushNotifications";
 import { LoginBody, ChangePasswordBody, SignupBody, ForgotPasswordBody } from "@workspace/api-zod";
 import { signToken, requireAuth } from "../middlewares/auth";
 import { randomBytes } from "crypto";
@@ -95,6 +96,32 @@ router.post("/auth/signup", async (req, res): Promise<void> => {
         pendingApproval: true,
       });
       await logAudit("member_joined", existingUser.id, team.id, "user", existingUser.id, { groupName: team.name, pendingApproval: true });
+
+      // Notify group owners and deputies about the new join request
+      try {
+        const managerMemberships = await db
+          .select()
+          .from(groupMembershipsTable)
+          .where(
+            and(
+              eq(groupMembershipsTable.groupId, team.id),
+              inArray(groupMembershipsTable.role, ["owner", "deputy"]),
+              eq(groupMembershipsTable.isActive, true)
+            )
+          );
+        const notifMessage = `${existingUser.fullName} requested to join ${team.name}`;
+        for (const mgr of managerMemberships) {
+          await db.insert(notificationsTable).values({
+            userId: mgr.userId,
+            type: "join_request",
+            message: notifMessage,
+          });
+          await sendPushToUser(mgr.userId, "New join request", notifMessage);
+        }
+      } catch {
+        /* best-effort: join request must not fail because of notification errors */
+      }
+
       res.status(201).json({
         pendingApproval: true,
         user: serializeUser(existingUser, "member", team.id),
@@ -122,6 +149,32 @@ router.post("/auth/signup", async (req, res): Promise<void> => {
     });
     await logAudit("user_created", user.id, team.id, "user", user.id, { fullName, role: "member" });
     await logAudit("member_joined", user.id, team.id, "user", user.id, { groupName: team.name, pendingApproval: true });
+
+    // Notify group owners and deputies about the new join request
+    try {
+      const managerMemberships = await db
+        .select()
+        .from(groupMembershipsTable)
+        .where(
+          and(
+            eq(groupMembershipsTable.groupId, team.id),
+            inArray(groupMembershipsTable.role, ["owner", "deputy"]),
+            eq(groupMembershipsTable.isActive, true)
+          )
+        );
+      const notifMessage = `${fullName} requested to join ${team.name}`;
+      for (const mgr of managerMemberships) {
+        await db.insert(notificationsTable).values({
+          userId: mgr.userId,
+          type: "join_request",
+          message: notifMessage,
+        });
+        await sendPushToUser(mgr.userId, "New join request", notifMessage);
+      }
+    } catch {
+      /* best-effort */
+    }
+
     res.status(201).json({ pendingApproval: true, user: serializeUser(user, "member", team.id), team: { id: team.id, name: team.name } });
   } else {
     // Creating a new team — user becomes owner

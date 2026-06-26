@@ -32,6 +32,40 @@ export default function SettingsScreen() {
     enabled: !!user,
   });
 
+  const isManager = user?.role === 'owner' || user?.role === 'deputy';
+
+  const { data: joinRequests, refetch: refetchJoinRequests } = useQuery({
+    queryKey: ['join-requests'],
+    queryFn: () => customFetch<Array<{ id: number; fullName: string; mobile: string }>>('/api/team/join-requests'),
+    enabled: !!user && isManager,
+    refetchInterval: 30_000,
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: number) =>
+      customFetch(`/api/team/join-requests/${id}/approve`, { method: 'POST' }),
+    onSuccess: () => {
+      refetchJoinRequests();
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    },
+    onError: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (id: number) =>
+      customFetch(`/api/team/join-requests/${id}/reject`, { method: 'POST' }),
+    onSuccess: () => {
+      refetchJoinRequests();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    },
+    onError: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    },
+  });
+
   const { data: notifPrefs } = useGetNotificationPreferences({ query: { enabled: !!user && Platform.OS !== 'web' } });
   const [prefs, setPrefs] = useState({ reminder24h: true, reminder1h: true, reminder10m: true, overdue: true });
 
@@ -137,6 +171,69 @@ export default function SettingsScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Pending Join Requests — shown only to managers */}
+        {isManager && joinRequests && joinRequests.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>PENDING REQUESTS</Text>
+            <View style={[styles.settingsCard, { backgroundColor: '#FEF3C708', borderColor: '#F59E0B40', borderWidth: 1, borderRadius: 12, overflow: 'hidden' }]}>
+              <View style={[styles.settingRow, { paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: '#F59E0B30' }]}>
+                <View style={[styles.settingIcon, { backgroundColor: '#F59E0B20' }]}>
+                  <Feather name="user-check" size={18} color="#F59E0B" />
+                </View>
+                <View style={styles.settingLabel}>
+                  <Text style={[styles.settingName, { color: '#92400E' }]}>Waiting for approval</Text>
+                  <Text style={[styles.settingDesc, { color: '#B45309' }]}>
+                    {joinRequests.length} {joinRequests.length === 1 ? 'person' : 'people'} requesting to join
+                  </Text>
+                </View>
+                <View style={{ backgroundColor: '#F59E0B', borderRadius: 10, minWidth: 20, alignItems: 'center', paddingHorizontal: 5, paddingVertical: 1 }}>
+                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' as const }}>{joinRequests.length}</Text>
+                </View>
+              </View>
+              {joinRequests.map((req, i) => (
+                <View
+                  key={req.id}
+                  style={[
+                    styles.settingRow,
+                    { alignItems: 'flex-start', paddingTop: 12, paddingBottom: 12 },
+                    i < joinRequests.length - 1 && { borderBottomWidth: 1, borderBottomColor: '#F59E0B20' },
+                  ]}
+                >
+                  <View style={[styles.settingIcon, { backgroundColor: '#F59E0B20', marginTop: 2 }]}>
+                    <Text style={{ fontSize: 16, fontWeight: '700' as const, color: '#F59E0B' }}>
+                      {req.fullName?.charAt(0)?.toUpperCase() ?? '?'}
+                    </Text>
+                  </View>
+                  <View style={[styles.settingLabel]}>
+                    <Text style={[styles.settingName, { color: colors.foreground }]}>{req.fullName}</Text>
+                    <Text style={[styles.settingDesc, { color: colors.mutedForeground }]}>{req.mobile}</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                      <TouchableOpacity
+                        style={{ backgroundColor: '#22C55E', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4, opacity: approveMutation.isPending ? 0.6 : 1 }}
+                        onPress={() => approveMutation.mutate(req.id)}
+                        disabled={approveMutation.isPending || rejectMutation.isPending}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="check" size={13} color="#fff" />
+                        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' as const }}>Approve</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: '#EF444440', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4, opacity: rejectMutation.isPending ? 0.6 : 1 }}
+                        onPress={() => rejectMutation.mutate(req.id)}
+                        disabled={approveMutation.isPending || rejectMutation.isPending}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name="x" size={13} color="#EF4444" />
+                        <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '600' as const }}>Reject</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Group Switcher — shown only when user belongs to multiple groups */}
         {groups.length > 1 && (

@@ -15,4 +15,5 @@ export const NotificationType = {
   task_completed: 'task_completed',
   task_approved: 'task_approved',
   task_reopened: 'task_reopened',
+  join_request: 'join_request',
 } as const;

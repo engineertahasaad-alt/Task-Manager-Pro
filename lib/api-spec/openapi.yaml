@@ -1306,7 +1306,7 @@ components:
           type: integer
         type:
           type: string
-          enum: [task_assigned, deadline_approaching, task_completed, task_approved, task_reopened]
+          enum: [task_assigned, deadline_approaching, task_completed, task_approved, task_reopened, join_request]
         message:
           type: string
         taskId:
