@@ -15,6 +15,7 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeUser } from "./auth";
 import { sendPushToUser } from "../lib/pushNotifications";
+import { loadOwnedTask } from "../lib/groupOwnership";
 
 const router = Router();
 router.use(requireAuth);
@@ -190,14 +191,7 @@ async function createNotification(
 }
 
 /** Load a task that belongs to the requester's active group. Returns null if not found or wrong group. */
-async function loadTaskInGroup(taskId: number, groupId: number | null | undefined) {
-  if (groupId == null) return null;
-  const [task] = await db
-    .select()
-    .from(tasksTable)
-    .where(and(eq(tasksTable.id, taskId), eq(tasksTable.teamId, groupId)));
-  return task ?? null;
-}
+const loadTaskInGroup = loadOwnedTask;
 
 /** Resolve assigneeIds from request body - supports both assigneeIds[] and legacy assigneeId */
 function resolveAssigneeIds(body: { assigneeIds?: number[]; assigneeId?: number }): number[] | null {
@@ -520,10 +514,17 @@ router.patch("/tasks/:id", requireRole("owner", "deputy"), async (req, res): Pro
 
   const newAssigneeIds = resolveAssigneeIds(parsed.data as any);
 
+  // Verify task exists (404) and belongs to requester's group (403 via assertGroupOwnership)
+  const existingTask = await loadTaskInGroup(params.data.id, groupId);
+  if (!existingTask) {
+    res.status(404).json({ error: "Task not found" });
+    return;
+  }
+
   const [task] = await db
     .update(tasksTable)
     .set(updateData)
-    .where(and(eq(tasksTable.id, params.data.id), eq(tasksTable.teamId, groupId)))
+    .where(eq(tasksTable.id, params.data.id))
     .returning();
 
   if (!task) {

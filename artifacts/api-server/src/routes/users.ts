@@ -6,6 +6,7 @@ import { CreateUserBody, UpdateUserBody, GetUserParams, UpdateUserParams, Disabl
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeUser } from "./auth";
 import { logAudit } from "../lib/audit";
+import { loadOwnedMembership } from "../lib/groupOwnership";
 
 const router = Router();
 
@@ -146,10 +147,7 @@ router.get("/users/:id", async (req, res): Promise<void> => {
   const groupId = req.user!.groupId;
   if (groupId == null) { res.status(403).json({ error: "No active group" }); return; }
 
-  // Verify target user is a member of the requester's active group
-  const [mem] = await db.select().from(groupMembershipsTable).where(
-    and(eq(groupMembershipsTable.userId, params.data.id), eq(groupMembershipsTable.groupId, groupId))
-  );
+  const mem = await loadOwnedMembership(params.data.id, groupId);
   if (!mem) {
     res.status(404).json({ error: "User not found in this group" });
     return;
@@ -178,10 +176,7 @@ router.patch("/users/:id", requireRole("owner", "deputy"), async (req, res): Pro
   const groupId = req.user!.groupId;
   if (groupId == null) { res.status(403).json({ error: "No active group" }); return; }
 
-  // Verify target user is a member of the requester's active group
-  const [existingMem] = await db.select().from(groupMembershipsTable).where(
-    and(eq(groupMembershipsTable.userId, params.data.id), eq(groupMembershipsTable.groupId, groupId))
-  );
+  const existingMem = await loadOwnedMembership(params.data.id, groupId);
   if (!existingMem) {
     res.status(404).json({ error: "User not found in this group" });
     return;
@@ -250,10 +245,7 @@ router.post("/users/:id/reset-password", requireRole("owner", "deputy"), async (
   const groupId = req.user!.groupId;
   if (groupId == null) { res.status(403).json({ error: "No active group" }); return; }
 
-  // Verify target user is a member of the requester's active group
-  const [mem] = await db.select().from(groupMembershipsTable).where(
-    and(eq(groupMembershipsTable.userId, params.data.id), eq(groupMembershipsTable.groupId, groupId))
-  );
+  const mem = await loadOwnedMembership(params.data.id, groupId);
   if (!mem) {
     res.status(404).json({ error: "User not found in this group" });
     return;
@@ -282,10 +274,7 @@ router.patch("/users/:id/disable", requireRole("owner", "deputy"), async (req, r
   const groupId = req.user!.groupId;
 
   if (groupId != null) {
-    const [mem] = await db
-      .select()
-      .from(groupMembershipsTable)
-      .where(and(eq(groupMembershipsTable.userId, params.data.id), eq(groupMembershipsTable.groupId, groupId)));
+    const mem = await loadOwnedMembership(params.data.id, groupId);
     if (!mem) {
       res.status(404).json({ error: "User not found in this group" });
       return;

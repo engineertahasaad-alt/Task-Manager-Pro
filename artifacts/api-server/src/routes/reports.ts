@@ -4,6 +4,7 @@ import { eq, and, gte, lte, inArray } from "drizzle-orm";
 import { GetDailyReportQueryParams, GetEmployeeReportQueryParams } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeTask } from "./tasks";
+import { loadOwnedMembership } from "../lib/groupOwnership";
 
 const router = Router();
 router.use(requireAuth, requireRole("owner", "deputy"));
@@ -48,6 +49,13 @@ router.get("/reports/employee", async (req, res): Promise<void> => {
 
   // Filter by employee via junction table so all assignees (not just primary) are included
   if (employeeId) {
+    // Assert the target employee belongs to the requester's group (throws 403 if cross-group)
+    const membership = await loadOwnedMembership(employeeId, groupId);
+    if (!membership) {
+      res.status(404).json({ error: "Employee not found" });
+      return;
+    }
+
     const assigneeRows = await db
       .select({ taskId: taskAssigneesTable.taskId })
       .from(taskAssigneesTable)
