@@ -3,18 +3,20 @@ import { useParams, useLocation } from "wouter";
 import {
   useGetTask, useCompleteTask, useApproveTask, useReopenTask, useGetMe,
   useListMessages, useSendMessage, useDelegateTask, useListGroups,
+  useUpdateTask, useListUsers,
   getGetTaskQueryKey, getListMessagesQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import {
   Send, CheckCircle2, ArrowLeft, Paperclip, FileIcon, Download,
-  RefreshCw, Users, Share2, ChevronRight, Loader2, X, ArrowUpRight,
+  RefreshCw, Users, Share2, ChevronRight, Loader2, X, ArrowUpRight, Pencil,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -67,6 +69,150 @@ function DelegatedTaskCard({ dt }: { dt: any }) {
         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 group-hover:text-primary" />
       </div>
     </button>
+  );
+}
+
+function EditTaskModal({
+  task,
+  open,
+  onClose,
+}: {
+  task: any;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const updateMutation = useUpdateTask();
+  const { data: users, isLoading: usersLoading } = useListUsers();
+
+  const initDate = task?.deadline ? format(new Date(task.deadline), "yyyy-MM-dd") : "";
+  const initTime = task?.deadline ? format(new Date(task.deadline), "HH:mm") : "17:00";
+  const initAssignees: number[] = task?.assignees?.map((a: any) => a.id) ?? (task?.assigneeId ? [task.assigneeId] : []);
+
+  const [title, setTitle] = useState(task?.title ?? "");
+  const [description, setDescription] = useState(task?.description ?? "");
+  const [deadlineDate, setDeadlineDate] = useState(initDate);
+  const [deadlineTime, setDeadlineTime] = useState(initTime);
+  const [assigneeIds, setAssigneeIds] = useState<number[]>(initAssignees);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open && task) {
+      setTitle(task.title ?? "");
+      setDescription(task.description ?? "");
+      setDeadlineDate(task.deadline ? format(new Date(task.deadline), "yyyy-MM-dd") : "");
+      setDeadlineTime(task.deadline ? format(new Date(task.deadline), "HH:mm") : "17:00");
+      const ids = task.assignees?.map((a: any) => a.id) ?? (task.assigneeId ? [task.assigneeId] : []);
+      setAssigneeIds(ids);
+    }
+  }, [open, task]);
+
+  function toggleAssignee(uid: number) {
+    setAssigneeIds(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]);
+  }
+
+  async function handleSave() {
+    if (!title.trim()) { toast({ title: "Title is required", variant: "destructive" }); return; }
+    if (!deadlineDate) { toast({ title: "Deadline is required", variant: "destructive" }); return; }
+    if (assigneeIds.length === 0) { toast({ title: "At least one assignee is required", variant: "destructive" }); return; }
+    setSaving(true);
+    try {
+      const deadline = new Date(`${deadlineDate}T${deadlineTime}`).toISOString();
+      await updateMutation.mutateAsync({
+        id: task.id,
+        data: { title: title.trim(), description: description.trim(), deadline, assigneeIds } as any,
+      });
+      toast({ title: "Task updated successfully" });
+      queryClient.invalidateQueries({ queryKey: getGetTaskQueryKey(task.id) });
+      onClose();
+    } catch (e: any) {
+      toast({ title: "Failed to update task", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!open) return null;
+
+  const activeUsers = users?.filter((u: any) => u.isActive) ?? [];
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-xl">
+        <div className="flex items-center justify-between p-5 border-b">
+          <div>
+            <h2 className="font-semibold text-lg">Edit Task</h2>
+            <p className="text-sm text-muted-foreground">Update task details</p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Title</label>
+            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Task title" />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Description</label>
+            <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Task description" className="min-h-[100px]" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Deadline Date</label>
+              <Input type="date" value={deadlineDate} onChange={e => setDeadlineDate(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Deadline Time</label>
+              <Input type="time" value={deadlineTime} onChange={e => setDeadlineTime(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Assignees <span className="text-muted-foreground font-normal">(select one or more)</span></label>
+            <div className="border rounded-lg divide-y overflow-hidden">
+              {usersLoading ? (
+                <div className="p-4 text-sm text-muted-foreground">Loading members...</div>
+              ) : activeUsers.length === 0 ? (
+                <div className="p-4 text-sm text-muted-foreground">No active members</div>
+              ) : activeUsers.map((u: any) => {
+                const isSelected = assigneeIds.includes(u.id);
+                return (
+                  <button
+                    key={u.id}
+                    type="button"
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 ${isSelected ? 'bg-indigo-50' : ''}`}
+                    onClick={() => toggleAssignee(u.id)}
+                  >
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${isSelected ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
+                      {isSelected ? <CheckCircle2 className="h-3.5 w-3.5" /> : u.fullName.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{u.fullName}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{u.role}</p>
+                    </div>
+                    {isSelected && <span className="text-xs font-medium text-indigo-600 shrink-0">Selected</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {assigneeIds.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">{assigneeIds.length} {assigneeIds.length === 1 ? 'person' : 'people'} selected</p>
+            )}
+          </div>
+        </div>
+
+        <div className="p-5 border-t flex gap-3">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Save Changes
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -238,6 +384,7 @@ export default function TaskDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showDelegateModal, setShowDelegateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const { data: user } = useGetMe();
   const { data: task, isLoading } = useGetTask(taskId, { query: { enabled: !!taskId } });
@@ -403,6 +550,15 @@ export default function TaskDetail() {
                       <RefreshCw className="mr-2 h-4 w-4" /> Reopen Task
                     </Button>
                   )}
+                  {isManager && (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setShowEditModal(true)}
+                    >
+                      <Pencil className="mr-2 h-4 w-4" /> Edit Task
+                    </Button>
+                  )}
                   {canDelegate && (
                     <Button
                       variant="outline"
@@ -505,6 +661,11 @@ export default function TaskDetail() {
         </div>
       </div>
 
+      <EditTaskModal
+        task={task}
+        open={showEditModal}
+        onClose={() => setShowEditModal(false)}
+      />
       <DelegateModal
         taskId={taskId}
         open={showDelegateModal}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, TextInput, Alert, Platform, Modal, FlatList,
@@ -10,6 +10,7 @@ import * as Haptics from 'expo-haptics';
 import {
   useGetTask, useCompleteTask, useApproveTask, useReopenTask,
   useListMessages, useSendMessage, useListUsers, useDelegateTask,
+  useUpdateTask,
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useColors } from '@/hooks/useColors';
@@ -47,6 +48,190 @@ function DelegatedTaskRow({ dt, colors }: { dt: any; colors: any }) {
     </TouchableOpacity>
   );
 }
+
+function EditTaskModal({
+  task,
+  visible,
+  onClose,
+  colors,
+}: {
+  task: any;
+  visible: boolean;
+  onClose: () => void;
+  colors: any;
+}) {
+  const queryClient = useQueryClient();
+  const { data: users } = useListUsers();
+  const { mutateAsync: updateTask } = useUpdateTask();
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (visible && task) {
+      setTitle(task.title ?? '');
+      setDescription(task.description ?? '');
+      const d = task.deadline ? new Date(task.deadline) : null;
+      setDeadline(d ? d.toISOString().slice(0, 10) : '');
+      const ids = task.assignees?.map((a: any) => a.id) ?? (task.assigneeId ? [task.assigneeId] : []);
+      setAssigneeIds(ids);
+      setError('');
+    }
+  }, [visible, task]);
+
+  function toggleAssignee(uid: number) {
+    setAssigneeIds(prev => prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]);
+  }
+
+  async function handleSave() {
+    if (!title.trim()) { setError('Title is required'); return; }
+    if (!deadline.trim()) { setError('Deadline is required'); return; }
+    if (assigneeIds.length === 0) { setError('At least one assignee is required'); return; }
+    const deadlineDate = new Date(deadline);
+    if (isNaN(deadlineDate.getTime())) { setError('Invalid date. Use YYYY-MM-DD'); return; }
+    setError('');
+    setSaving(true);
+    try {
+      await updateTask({ id: task.id, data: { title: title.trim(), description: description.trim(), deadline: deadlineDate.toISOString(), assigneeIds } });
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      queryClient.invalidateQueries({ queryKey: ['getTask'] });
+      queryClient.invalidateQueries({ queryKey: ['listTasks'] });
+      onClose();
+    } catch (e: any) {
+      setError(e.message || 'Failed to update task');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const activeUsers = (users ?? []).filter((u: any) => u.isActive);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Edit Task</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Feather name="x" size={20} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={{ maxHeight: 480 }} contentContainerStyle={{ padding: 20, gap: 16 }} keyboardShouldPersistTaps="handled">
+            {error ? (
+              <View style={[editStyles.errorBanner, { backgroundColor: '#EF444420', borderColor: '#EF4444' }]}>
+                <Feather name="alert-circle" size={13} color="#EF4444" />
+                <Text style={editStyles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            <View style={editStyles.field}>
+              <Text style={[editStyles.label, { color: colors.foreground }]}>Title *</Text>
+              <TextInput
+                style={[editStyles.input, { borderColor: colors.border, backgroundColor: colors.card, color: colors.foreground }]}
+                placeholder="Task title"
+                placeholderTextColor={colors.mutedForeground}
+                value={title}
+                onChangeText={setTitle}
+              />
+            </View>
+
+            <View style={editStyles.field}>
+              <Text style={[editStyles.label, { color: colors.foreground }]}>Description</Text>
+              <TextInput
+                style={[editStyles.textarea, { borderColor: colors.border, backgroundColor: colors.card, color: colors.foreground }]}
+                placeholder="Task description"
+                placeholderTextColor={colors.mutedForeground}
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+
+            <View style={editStyles.field}>
+              <Text style={[editStyles.label, { color: colors.foreground }]}>Deadline * <Text style={{ color: colors.mutedForeground, fontWeight: '400' as const }}>(YYYY-MM-DD)</Text></Text>
+              <TextInput
+                style={[editStyles.input, { borderColor: colors.border, backgroundColor: colors.card, color: colors.foreground }]}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={colors.mutedForeground}
+                value={deadline}
+                onChangeText={setDeadline}
+                keyboardType="numbers-and-punctuation"
+              />
+            </View>
+
+            <View style={editStyles.field}>
+              <Text style={[editStyles.label, { color: colors.foreground }]}>
+                Assignees *{assigneeIds.length > 0 ? ` (${assigneeIds.length} selected)` : ''}
+              </Text>
+              <View style={[editStyles.assigneeList, { borderColor: colors.border }]}>
+                {activeUsers.length === 0 ? (
+                  <Text style={[{ padding: 14, fontSize: 13, color: colors.mutedForeground, fontFamily: 'Inter_400Regular' }]}>No active members</Text>
+                ) : activeUsers.map((u: any) => {
+                  const isSelected = assigneeIds.includes(u.id);
+                  return (
+                    <TouchableOpacity
+                      key={u.id}
+                      style={[editStyles.assigneeRow, { borderBottomColor: colors.border }, isSelected && { backgroundColor: colors.primary + '12' }]}
+                      onPress={() => toggleAssignee(u.id)}
+                    >
+                      <View style={[editStyles.avatar, { backgroundColor: isSelected ? colors.primary : colors.primary + '20' }]}>
+                        {isSelected
+                          ? <Feather name="check" size={13} color="#fff" />
+                          : <Text style={[editStyles.avatarText, { color: colors.primary }]}>{u.fullName?.charAt(0)?.toUpperCase()}</Text>
+                        }
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[editStyles.assigneeName, { color: colors.foreground }]}>{u.fullName}</Text>
+                        <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: 'Inter_400Regular', textTransform: 'capitalize' }}>{u.role}</Text>
+                      </View>
+                      {isSelected && <Text style={{ fontSize: 12, color: colors.primary, fontFamily: 'Inter_500Medium' }}>Selected</Text>}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </ScrollView>
+
+          <View style={{ padding: 16, paddingTop: 8 }}>
+            <TouchableOpacity
+              style={[styles.delegateBtn, { backgroundColor: colors.primary }, saving && { opacity: 0.6 }]}
+              onPress={handleSave}
+              disabled={saving}
+            >
+              {saving
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <>
+                    <Feather name="save" size={16} color="#fff" />
+                    <Text style={styles.delegateBtnText}>Save Changes</Text>
+                  </>
+              }
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const editStyles = StyleSheet.create({
+  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 10, borderWidth: 1 },
+  errorText: { color: '#EF4444', fontSize: 13, fontFamily: 'Inter_400Regular', flex: 1 },
+  field: { gap: 8 },
+  label: { fontSize: 14, fontWeight: '500' as const, fontFamily: 'Inter_500Medium' },
+  input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, height: 46, fontSize: 15, fontFamily: 'Inter_400Regular' },
+  textarea: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, minHeight: 80, fontSize: 15, fontFamily: 'Inter_400Regular', textAlignVertical: 'top' },
+  assigneeList: { borderWidth: 1, borderRadius: 12, overflow: 'hidden' },
+  assigneeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderBottomWidth: 1 },
+  avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 14, fontWeight: '700' as const, fontFamily: 'Inter_700Bold' },
+  assigneeName: { flex: 1, fontSize: 15, fontFamily: 'Inter_400Regular' },
+});
 
 function DelegateModal({
   taskId,
@@ -261,6 +446,7 @@ export default function TaskDetailScreen() {
   const [sendingMsg, setSendingMsg] = useState(false);
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [showDelegateModal, setShowDelegateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [reassignLoading, setReassignLoading] = useState(false);
 
   const taskId = Number(id);
@@ -411,6 +597,14 @@ export default function TaskDetailScreen() {
           <View style={[styles.statusPill, { backgroundColor: sc.bg }]}>
             <Text style={[styles.statusText, { color: sc.color }]}>{sc.label}</Text>
           </View>
+          {isManager && (
+            <TouchableOpacity
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              onPress={() => setShowEditModal(true)}
+            >
+              <Feather name="edit-2" size={18} color={colors.foreground} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -672,6 +866,12 @@ export default function TaskDetailScreen() {
         </View>
       </Modal>
 
+      <EditTaskModal
+        task={task}
+        visible={showEditModal}
+        onClose={() => { setShowEditModal(false); refetch(); }}
+        colors={colors}
+      />
       <DelegateModal
         taskId={taskId}
         visible={showDelegateModal}
