@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOffline } from '@/context/OfflineContext';
 
 export function OfflineBanner() {
   const { isOnline } = useOffline();
+  const insets = useSafeAreaInsets();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-40)).current;
 
@@ -24,8 +26,15 @@ export function OfflineBanner() {
 
   if (isOnline) return null;
 
+  const topPadding = Platform.OS === 'web' ? 8 : insets.top + 8;
+
   return (
-    <Animated.View style={[styles.banner, { opacity, transform: [{ translateY }] }]}>
+    <Animated.View
+      style={[
+        styles.banner,
+        { paddingTop: topPadding, opacity, transform: [{ translateY }] },
+      ]}
+    >
       <Feather name="wifi-off" size={14} color="#fff" />
       <Text style={styles.text}>No internet — showing cached data</Text>
     </Animated.View>
@@ -44,7 +53,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 8,
+    paddingBottom: 8,
     paddingHorizontal: 16,
   },
   text: {

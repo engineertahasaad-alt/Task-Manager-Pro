@@ -32,7 +32,7 @@ export default function TasksScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { isOnline, cachedTasks, saveCachedTasks } = useOffline();
+  const { isOnline, cachedTasks, mergeCachedTasks } = useOffline();
   const params = useLocalSearchParams<{ initialFilter?: string }>();
   const [selectedFilter, setSelectedFilter] = useState<FilterValue>(null);
   const isManager = user?.role === 'owner' || user?.role === 'deputy';
@@ -60,8 +60,8 @@ export default function TasksScreen() {
     : [];
 
   useEffect(() => {
-    if (tasks && tasks.length > 0 && !selectedFilter) {
-      saveCachedTasks(tasks as any[]);
+    if (tasks && tasks.length > 0 && selectedFilter !== 'delegated') {
+      mergeCachedTasks(tasks as any[]);
     }
   }, [tasks, selectedFilter]);
 
