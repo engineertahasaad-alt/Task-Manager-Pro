@@ -6,7 +6,10 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "1c68d96f-1746-461f-bc2a-3bdc5ce5fe52-00-22dwvqskyd91x.kirk.replit.dev"
+      }
     },
     "preview": {
       "distribution": "internal",
@@ -17,6 +20,9 @@
       },
       "ios": {
         "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "1c68d96f-1746-461f-bc2a-3bdc5ce5fe52-00-22dwvqskyd91x.kirk.replit.dev"
       }
     },
     "production": {
@@ -24,6 +30,9 @@
       "android": {
         "buildType": "app-bundle",
         "credentialsSource": "remote"
+      },
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "1c68d96f-1746-461f-bc2a-3bdc5ce5fe52-00-22dwvqskyd91x.kirk.replit.dev"
       }
     }
   },
