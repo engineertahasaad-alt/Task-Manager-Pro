@@ -10,9 +10,7 @@ import { loadOwnedMembership } from "../lib/groupOwnership";
 
 const router = Router();
 
-router.use(requireAuth);
-
-router.get("/users", async (req, res): Promise<void> => {
+router.get("/users", requireAuth, async (req, res): Promise<void> => {
   const activeGroupId = req.user!.groupId;
 
   // If a targetGroupId is provided, only managers of that group may request it (for delegation)
@@ -83,7 +81,7 @@ router.get("/users", async (req, res): Promise<void> => {
   }));
 });
 
-router.get("/team/info", async (req, res): Promise<void> => {
+router.get("/team/info", requireAuth, async (req, res): Promise<void> => {
   const groupId = req.user!.groupId;
   if (!groupId) { res.status(404).json({ error: "No team" }); return; }
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, groupId));
@@ -91,7 +89,7 @@ router.get("/team/info", async (req, res): Promise<void> => {
   res.json({ id: team.id, name: team.name, inviteCode: team.inviteCode });
 });
 
-router.post("/users", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.post("/users", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const parsed = CreateUserBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -138,7 +136,7 @@ router.post("/users", requireRole("owner", "deputy"), async (req, res): Promise<
   res.status(201).json(serializeUser(user, role, groupId));
 });
 
-router.get("/users/:id", async (req, res): Promise<void> => {
+router.get("/users/:id", requireAuth, async (req, res): Promise<void> => {
   const params = GetUserParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -161,7 +159,7 @@ router.get("/users/:id", async (req, res): Promise<void> => {
   res.json(serializeUser(user, mem.role, groupId));
 });
 
-router.patch("/users/:id", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.patch("/users/:id", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const params = UpdateUserParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -231,7 +229,7 @@ router.patch("/users/:id", requireRole("owner", "deputy"), async (req, res): Pro
   res.json(serializeUser(user, role, groupId));
 });
 
-router.post("/users/:id/reset-password", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.post("/users/:id/reset-password", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const params = ResetUserPasswordParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -265,7 +263,7 @@ router.post("/users/:id/reset-password", requireRole("owner", "deputy"), async (
   res.json({ message: "Password reset. User must change password on next login." });
 });
 
-router.patch("/users/:id/disable", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.patch("/users/:id/disable", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const params = DisableUserParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -304,7 +302,7 @@ router.patch("/users/:id/disable", requireRole("owner", "deputy"), async (req, r
 });
 
 // Join requests
-router.get("/team/join-requests", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.get("/team/join-requests", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const groupId = req.user!.groupId;
   if (!groupId) { res.json([]); return; }
   const pending = await db
@@ -320,7 +318,7 @@ router.get("/team/join-requests", requireRole("owner", "deputy"), async (req, re
   res.json(result.filter(Boolean));
 });
 
-router.post("/team/join-requests/:id/approve", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.post("/team/join-requests/:id/approve", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const groupId = req.user!.groupId;
@@ -344,7 +342,7 @@ router.post("/team/join-requests/:id/approve", requireRole("owner", "deputy"), a
   res.json(serializeUser(user, mem.role, groupId));
 });
 
-router.post("/team/join-requests/:id/reject", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.post("/team/join-requests/:id/reject", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const groupId = req.user!.groupId;
@@ -375,7 +373,7 @@ router.post("/team/join-requests/:id/reject", requireRole("owner", "deputy"), as
 });
 
 // Regenerate invite code (owner only)
-router.post("/team/regenerate-invite", requireRole("owner"), async (req, res): Promise<void> => {
+router.post("/team/regenerate-invite", requireAuth, requireRole("owner"), async (req, res): Promise<void> => {
   const groupId = req.user!.groupId;
   if (!groupId) { res.status(404).json({ error: "No team" }); return; }
   const { randomBytes } = await import("crypto");

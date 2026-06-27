@@ -6,7 +6,6 @@ import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeTask } from "./tasks";
 
 const router = Router();
-router.use(requireAuth);
 
 function getDateRange(dateFilter?: string | null, startDate?: string | null, endDate?: string | null) {
   const now = new Date();
@@ -29,7 +28,7 @@ function getDateRange(dateFilter?: string | null, startDate?: string | null, end
   return null;
 }
 
-router.get("/dashboard/summary", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.get("/dashboard/summary", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const params = GetDashboardSummaryQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
 
@@ -66,7 +65,7 @@ router.get("/dashboard/summary", requireRole("owner", "deputy"), async (req, res
   res.json({ total, open, completed, approved, overdue });
 });
 
-router.get("/dashboard/workload", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.get("/dashboard/workload", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const params = GetWorkloadByEmployeeQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
 
@@ -133,7 +132,7 @@ router.get("/dashboard/workload", requireRole("owner", "deputy"), async (req, re
   res.json(workload);
 });
 
-router.get("/dashboard/my-tasks", async (req, res): Promise<void> => {
+router.get("/dashboard/my-tasks", requireAuth, async (req, res): Promise<void> => {
   const userId = req.user!.id;
   const groupId = req.user!.groupId;
   const now = new Date();

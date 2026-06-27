@@ -7,9 +7,8 @@ import { serializeTask } from "./tasks";
 import { loadOwnedMembership } from "../lib/groupOwnership";
 
 const router = Router();
-router.use(requireAuth, requireRole("owner", "deputy"));
 
-router.get("/reports/daily", async (req, res): Promise<void> => {
+router.get("/reports/daily", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const params = GetDailyReportQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
 
@@ -37,7 +36,7 @@ router.get("/reports/daily", async (req, res): Promise<void> => {
   });
 });
 
-router.get("/reports/employee", async (req, res): Promise<void> => {
+router.get("/reports/employee", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const params = GetEmployeeReportQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
 

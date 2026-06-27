@@ -5,9 +5,8 @@ import { MarkNotificationReadParams } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 
 const router = Router();
-router.use(requireAuth);
 
-router.get("/notifications", async (req, res): Promise<void> => {
+router.get("/notifications", requireAuth, async (req, res): Promise<void> => {
   const groupId = req.user!.groupId;
 
   // Scope notifications to the active group by joining with tasks.
@@ -39,7 +38,7 @@ router.get("/notifications", async (req, res): Promise<void> => {
   );
 });
 
-router.patch("/notifications/:id/read", async (req, res): Promise<void> => {
+router.patch("/notifications/:id/read", requireAuth, async (req, res): Promise<void> => {
   const params = MarkNotificationReadParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -73,7 +72,7 @@ router.patch("/notifications/:id/read", async (req, res): Promise<void> => {
   });
 });
 
-router.patch("/notifications/read-all", async (req, res): Promise<void> => {
+router.patch("/notifications/read-all", requireAuth, async (req, res): Promise<void> => {
   await db
     .update(notificationsTable)
     .set({ isRead: true })
@@ -82,7 +81,7 @@ router.patch("/notifications/read-all", async (req, res): Promise<void> => {
   res.json({ message: "All notifications marked as read" });
 });
 
-router.get("/notifications/preferences", async (req, res): Promise<void> => {
+router.get("/notifications/preferences", requireAuth, async (req, res): Promise<void> => {
   const [user] = await db
     .select({
       notifyReminder24h: usersTable.notifyReminder24h,
@@ -103,7 +102,7 @@ router.get("/notifications/preferences", async (req, res): Promise<void> => {
   });
 });
 
-router.put("/notifications/preferences", async (req, res): Promise<void> => {
+router.put("/notifications/preferences", requireAuth, async (req, res): Promise<void> => {
   const { reminder24h, reminder1h, reminder10m, overdue } = req.body;
 
   if (

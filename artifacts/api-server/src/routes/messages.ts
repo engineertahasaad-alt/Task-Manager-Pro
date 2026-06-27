@@ -6,7 +6,6 @@ import { requireAuth } from "../middlewares/auth";
 import { serializeUser } from "./auth";
 
 const router = Router();
-router.use(requireAuth);
 
 /** Load a task scoped to the requester's active group. */
 async function loadTaskInGroup(taskId: number, groupId: number | null | undefined) {
@@ -18,7 +17,7 @@ async function loadTaskInGroup(taskId: number, groupId: number | null | undefine
   return task ?? null;
 }
 
-router.get("/tasks/:id/messages", async (req, res): Promise<void> => {
+router.get("/tasks/:id/messages", requireAuth, async (req, res): Promise<void> => {
   const params = ListMessagesParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -63,7 +62,7 @@ router.get("/tasks/:id/messages", async (req, res): Promise<void> => {
   res.json(serialized);
 });
 
-router.post("/tasks/:id/messages", async (req, res): Promise<void> => {
+router.post("/tasks/:id/messages", requireAuth, async (req, res): Promise<void> => {
   const params = SendMessageParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

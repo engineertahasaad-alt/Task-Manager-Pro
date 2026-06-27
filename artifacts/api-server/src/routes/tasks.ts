@@ -18,7 +18,6 @@ import { sendPushToUser } from "../lib/pushNotifications";
 import { loadOwnedTask } from "../lib/groupOwnership";
 
 const router = Router();
-router.use(requireAuth);
 
 function getDateRange(dateFilter?: string, startDate?: string, endDate?: string) {
   const now = new Date();
@@ -204,7 +203,7 @@ function resolveAssigneeIds(body: { assigneeIds?: number[]; assigneeId?: number 
   return null;
 }
 
-router.get("/tasks", async (req, res): Promise<void> => {
+router.get("/tasks", requireAuth, async (req, res): Promise<void> => {
   const params = ListTasksQueryParams.safeParse(req.query);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -310,7 +309,7 @@ router.get("/tasks", async (req, res): Promise<void> => {
   res.json(serialized);
 });
 
-router.post("/tasks", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.post("/tasks", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const parsed = CreateTaskBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -359,7 +358,7 @@ router.post("/tasks", requireRole("owner", "deputy"), async (req, res): Promise<
   res.status(201).json(serialized);
 });
 
-router.get("/tasks/:id", async (req, res): Promise<void> => {
+router.get("/tasks/:id", requireAuth, async (req, res): Promise<void> => {
   const params = GetTaskParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -384,7 +383,7 @@ router.get("/tasks/:id", async (req, res): Promise<void> => {
   res.json(await serializeTask(task, true, true));
 });
 
-router.post("/tasks/:id/delegate", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.post("/tasks/:id/delegate", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid task id" }); return; }
 
@@ -492,7 +491,7 @@ router.post("/tasks/:id/delegate", requireRole("owner", "deputy"), async (req, r
   res.status(201).json(await serializeTask(childTask, true, false));
 });
 
-router.patch("/tasks/:id", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.patch("/tasks/:id", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const params = UpdateTaskParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -545,7 +544,7 @@ router.patch("/tasks/:id", requireRole("owner", "deputy"), async (req, res): Pro
   res.json(await serializeTask(task));
 });
 
-router.patch("/tasks/:id/complete", async (req, res): Promise<void> => {
+router.patch("/tasks/:id/complete", requireAuth, async (req, res): Promise<void> => {
   const params = CompleteTaskParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -597,7 +596,7 @@ router.patch("/tasks/:id/complete", async (req, res): Promise<void> => {
   res.json(await serializeTask(updated));
 });
 
-router.patch("/tasks/:id/approve", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.patch("/tasks/:id/approve", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const params = ApproveTaskParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -631,7 +630,7 @@ router.patch("/tasks/:id/approve", requireRole("owner", "deputy"), async (req, r
   res.json(await serializeTask(updated));
 });
 
-router.patch("/tasks/:id/reopen", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.patch("/tasks/:id/reopen", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const params = ReopenTaskParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -665,7 +664,7 @@ router.patch("/tasks/:id/reopen", requireRole("owner", "deputy"), async (req, re
   res.json(await serializeTask(updated));
 });
 
-router.post("/tasks/:id/reassign-request", async (req, res): Promise<void> => {
+router.post("/tasks/:id/reassign-request", requireAuth, async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid task id" }); return; }
 
@@ -744,7 +743,7 @@ router.post("/tasks/:id/reassign-request", async (req, res): Promise<void> => {
   res.json(await serializeTask(updated));
 });
 
-router.patch("/tasks/:id/reassign-approve", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.patch("/tasks/:id/reassign-approve", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid task id" }); return; }
 
@@ -790,7 +789,7 @@ router.patch("/tasks/:id/reassign-approve", requireRole("owner", "deputy"), asyn
   res.json(await serializeTask(updated));
 });
 
-router.patch("/tasks/:id/reassign-reject", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.patch("/tasks/:id/reassign-reject", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const id = Number(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid task id" }); return; }
 

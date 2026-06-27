@@ -3,9 +3,8 @@ import { pool } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
 const router = Router();
-router.use(requireAuth);
 
-router.get("/audit-logs", requireRole("owner", "deputy"), async (req, res): Promise<void> => {
+router.get("/audit-logs", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
   const groupId = req.user!.groupId;
   if (!groupId) {
     res.status(403).json({ error: "No active group" });
