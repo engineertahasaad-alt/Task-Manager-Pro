@@ -10,7 +10,8 @@
     "build:apk": "node scripts/build-apk.js",
     "push-update": "node scripts/push-update.js",
     "serve": "node server/serve.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "eas-build-pre-install": "corepack enable pnpm && corepack prepare pnpm@10.26.1 --activate && pnpm --version"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
