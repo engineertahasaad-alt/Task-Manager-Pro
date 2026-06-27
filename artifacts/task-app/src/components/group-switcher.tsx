@@ -57,8 +57,7 @@ export function GroupSwitcher() {
     try {
       const data = await switchGroup(groupId);
       localStorage.setItem("taskaya_token", data.token);
-      queryClient.clear();
-      window.location.reload();
+      await queryClient.invalidateQueries();
     } catch {
     } finally {
       setSwitching(false);
