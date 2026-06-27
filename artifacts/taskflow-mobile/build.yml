@@ -3,11 +3,19 @@ build:
   steps:
     - eas/checkout
     - run:
-        name: Install workspace dependencies from repo root
+        name: Enable corepack and install pnpm
         command: |
-          REPO_ROOT=$(git -C "$EAS_BUILD_WORKINGDIR" rev-parse --show-toplevel)
+          corepack enable || true
+          npm install -g pnpm@10 || true
+    - run:
+        name: Install workspace dependencies (no frozen lockfile)
+        command: |
+          REPO_ROOT=$(git -C "$EAS_BUILD_WORKINGDIR" rev-parse --show-toplevel 2>/dev/null || dirname "$EAS_BUILD_WORKINGDIR")
           echo "Repo root: $REPO_ROOT"
           cd "$REPO_ROOT"
           pnpm install --no-frozen-lockfile
-    - eas/prebuild
+    - run:
+        name: Expo Prebuild (skip install)
+        working_directory: $EAS_BUILD_WORKINGDIR
+        command: npx expo prebuild --platform android --no-install --clean
     - eas/gradle
