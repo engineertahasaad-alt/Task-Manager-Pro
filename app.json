@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Taskaya",
+    "slug": "taskaya",
+    "owner": "tahasaad1989",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "taskaya",
+    "icon": "./artifacts/taskflow-mobile/assets/images/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.taskaya.app"
+    },
+    "android": {
+      "package": "com.taskaya.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./artifacts/taskflow-mobile/assets/images/icon.png",
+        "backgroundColor": "#4F6EF7"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f862d3f1-8e6f-45cf-b033-46cde59ff22a",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f862d3f1-8e6f-45cf-b033-46cde59ff22a"
+      }
+    }
+  }
+}
