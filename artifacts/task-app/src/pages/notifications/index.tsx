@@ -2,7 +2,7 @@ import { useListNotifications, useMarkNotificationRead, useMarkAllNotificationsR
 import { useQueryClient } from "@tanstack/react-query";
 import { AppLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
-import { Bell, CheckCircle2, Inbox, MessageSquare, CheckSquare, RotateCcw, ThumbsUp } from "lucide-react";
+import { Bell, CheckCircle2, Inbox, MessageSquare, CheckSquare, RotateCcw, ThumbsUp, UserCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useLocation } from "wouter";
 import { useMarkAllRead } from "@workspace/api-client-react";
@@ -13,6 +13,7 @@ const TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string }> = {
   task_approved:   { icon: ThumbsUp,      color: "text-green-600",  bg: "bg-green-100" },
   task_reopened:   { icon: RotateCcw,     color: "text-orange-600", bg: "bg-orange-100" },
   deadline_approaching: { icon: Bell,     color: "text-red-600",    bg: "bg-red-100" },
+  join_request:    { icon: UserCheck,     color: "text-indigo-600", bg: "bg-indigo-100" },
 };
 
 export default function Notifications() {
@@ -37,6 +38,7 @@ export default function Notifications() {
   const handleClick = (notif: any) => {
     if (!notif.isRead) handleMarkRead(notif.id);
     if (notif.taskId) setLocation(`/tasks/${notif.taskId}`);
+    else if (notif.type === "join_request") setLocation("/settings");
   };
 
   const unreadCount = notifications?.filter(n => !n.isRead).length || 0;
@@ -78,7 +80,10 @@ export default function Notifications() {
             {sorted.map((notif) => {
               const cfg = TYPE_CONFIG[notif.type] ?? TYPE_CONFIG.task_assigned;
               const Icon = cfg.icon;
-              const isClickable = !!notif.taskId;
+              const isClickable = !!notif.taskId || notif.type === "join_request";
+              const clickHint = notif.type === "join_request"
+                ? "Go to settings to switch groups →"
+                : "Tap to open task →";
               return (
                 <div
                   key={notif.id}
@@ -101,7 +106,7 @@ export default function Notifications() {
                       {formatDistanceToNow(new Date(notif.createdAt), { addSuffix: true })}
                     </p>
                     {isClickable && (
-                      <p className="text-xs text-indigo-500 mt-1 font-medium">Tap to open task →</p>
+                      <p className="text-xs text-indigo-500 mt-1 font-medium">{clickHint}</p>
                     )}
                   </div>
 

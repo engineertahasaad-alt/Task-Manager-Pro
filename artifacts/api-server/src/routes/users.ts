@@ -1,12 +1,13 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable, teamsTable, groupMembershipsTable } from "@workspace/db";
+import { db, usersTable, teamsTable, groupMembershipsTable, notificationsTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import { CreateUserBody, UpdateUserBody, GetUserParams, UpdateUserParams, DisableUserParams, ResetUserPasswordBody, ResetUserPasswordParams } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeUser } from "./auth";
 import { logAudit } from "../lib/audit";
 import { loadOwnedMembership } from "../lib/groupOwnership";
+import { sendPushToUser } from "../lib/pushNotifications";
 
 const router = Router();
 
@@ -339,6 +340,13 @@ router.post("/team/join-requests/:id/approve", requireAuth, requireRole("owner",
 
   await logAudit("member_approved", req.user!.id, groupId, "user", id, {});
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+
+  const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, groupId));
+  const groupName = team?.name ?? "the group";
+  const approvalMessage = `Your request to join ${groupName} was approved`;
+  await db.insert(notificationsTable).values({ userId: id, type: "join_request", message: approvalMessage });
+  await sendPushToUser(id, "Join Request Approved", approvalMessage);
+
   res.json(serializeUser(user, mem.role, groupId));
 });
 
@@ -354,6 +362,10 @@ router.post("/team/join-requests/:id/reject", requireAuth, requireRole("owner", 
     .where(and(eq(groupMembershipsTable.userId, id), eq(groupMembershipsTable.groupId, groupId)));
   if (!mem) { res.status(404).json({ error: "Request not found" }); return; }
 
+  const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, groupId));
+  const groupName = team?.name ?? "the group";
+  const rejectionMessage = `Your request to join ${groupName} was declined`;
+
   await db.delete(groupMembershipsTable).where(
     and(eq(groupMembershipsTable.userId, id), eq(groupMembershipsTable.groupId, groupId))
   );
@@ -366,7 +378,13 @@ router.post("/team/join-requests/:id/reject", requireAuth, requireRole("owner", 
     .from(groupMembershipsTable)
     .where(eq(groupMembershipsTable.userId, id));
   if (otherMemberships.length === 0) {
+    // Send push before deleting the user (in-app notification not useful if account is removed)
+    await sendPushToUser(id, "Join Request Declined", rejectionMessage);
     await db.delete(usersTable).where(eq(usersTable.id, id));
+  } else {
+    // User still exists in other groups — store the in-app notification and send push
+    await db.insert(notificationsTable).values({ userId: id, type: "join_request", message: rejectionMessage });
+    await sendPushToUser(id, "Join Request Declined", rejectionMessage);
   }
 
   res.json({ message: "Request rejected" });

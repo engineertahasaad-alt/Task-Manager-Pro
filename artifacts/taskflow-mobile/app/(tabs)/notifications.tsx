@@ -18,6 +18,7 @@ const NOTIF_ICONS: Record<string, { icon: string; color: string }> = {
   task_completed: { icon: 'check-circle', color: '#22C55E' },
   task_approved: { icon: 'award', color: '#8B5CF6' },
   task_reopened: { icon: 'refresh-cw', color: '#EF4444' },
+  join_request: { icon: 'user-check', color: '#4F6EF7' },
 };
 
 type NotifItem = {
@@ -145,6 +146,7 @@ export default function NotificationsScreen() {
   function handlePress(item: NotifItem) {
     if (!item.isRead) handleMarkRead(item.id);
     if (item.taskId) router.push(`/task/${item.taskId}` as any);
+    else if (item.type === 'join_request') router.push('/(tabs)/settings' as any);
   }
 
   return (
