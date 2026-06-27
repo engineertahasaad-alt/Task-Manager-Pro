@@ -15,14 +15,26 @@ function log(msg) {
   console.log(`[build-apk] ${msg}`);
 }
 
+const EAS_BIN = (() => {
+  const candidates = [
+    '/home/runner/workspace/.config/npm/node_global/bin/eas',
+    '/nix/store/spvnxml8f61qy1jrnlfz9p1yhjyh0f4j-eas-cli-14.7.1/bin/eas',
+  ];
+  for (const c of candidates) {
+    try { execSync(`test -x ${c}`); return c; } catch(_) {}
+  }
+  return 'eas';
+})();
+
 function runJson(cmd, cwd) {
+  const fullCmd = cmd.replace(/^eas /, `${EAS_BIN} `);
   try {
-    const output = execSync(cmd, { cwd, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const output = execSync(fullCmd, { cwd, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
     return JSON.parse(output.trim());
   } catch (e) {
     const stderr = e.stderr ? e.stderr.toString() : '';
     const stdout = e.stdout ? e.stdout.toString() : '';
-    throw new Error(`Command failed: ${cmd}\nstdout: ${stdout}\nstderr: ${stderr}`);
+    throw new Error(`Command failed: ${fullCmd}\nstdout: ${stdout}\nstderr: ${stderr}`);
   }
 }
 
