@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Check, Layers } from "lucide-react";
+import { ChevronDown, Check, Layers, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,12 +10,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 
 interface GroupSummary {
   id: number;
   name: string;
   role: string;
   isActive?: boolean;
+  pendingApproval?: boolean;
 }
 
 async function fetchGroups(): Promise<GroupSummary[]> {
@@ -48,9 +50,13 @@ export function GroupSwitcher() {
     refetchInterval: 30_000,
   });
 
-  if (groups.length <= 1) return null;
+  const activeGroups = groups.filter((g) => !g.pendingApproval);
+  const pendingGroups = groups.filter((g) => g.pendingApproval);
 
-  const activeGroup = groups.find((g) => g.isActive) ?? groups[0];
+  if (groups.length <= 1 && pendingGroups.length === 0) return null;
+
+  const activeGroup = groups.find((g) => g.isActive) ?? activeGroups[0];
+  const hasPending = pendingGroups.length > 0;
 
   async function handleSwitch(groupId: number) {
     if (switching || activeGroup?.id === groupId) return;
@@ -68,16 +74,19 @@ export function GroupSwitcher() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs font-medium" disabled={switching}>
+        <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs font-medium relative" disabled={switching}>
           <Layers className="h-3.5 w-3.5 text-indigo-600" />
           <span className="max-w-[120px] truncate">{activeGroup?.name ?? "Switch Group"}</span>
+          {hasPending && (
+            <span className="absolute -top-1.5 -right-1.5 h-3.5 w-3.5 rounded-full bg-amber-400 border-2 border-background" />
+          )}
           <ChevronDown className="h-3 w-3 opacity-60" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-52">
         <DropdownMenuLabel className="text-xs text-muted-foreground">Your Groups</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {groups.map((g) => (
+        {activeGroups.map((g) => (
           <DropdownMenuItem
             key={g.id}
             onClick={() => handleSwitch(g.id)}
@@ -88,6 +97,23 @@ export function GroupSwitcher() {
               <p className="text-xs text-muted-foreground capitalize">{g.role}</p>
             </div>
             {g.isActive && <Check className="h-4 w-4 text-indigo-600 shrink-0" />}
+          </DropdownMenuItem>
+        ))}
+        {pendingGroups.length > 0 && activeGroups.length > 0 && <DropdownMenuSeparator />}
+        {pendingGroups.map((g) => (
+          <DropdownMenuItem
+            key={g.id}
+            disabled
+            className="flex items-center justify-between gap-2 opacity-60 cursor-default"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="truncate font-medium text-sm">{g.name}</p>
+              <p className="text-xs text-muted-foreground capitalize">{g.role}</p>
+            </div>
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-300 text-amber-600 bg-amber-50 shrink-0 flex items-center gap-1">
+              <Clock className="h-2.5 w-2.5" />
+              Pending
+            </Badge>
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

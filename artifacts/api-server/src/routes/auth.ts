@@ -308,14 +308,22 @@ router.get("/auth/groups", requireAuth, async (req, res): Promise<void> => {
     .where(
       and(
         eq(groupMembershipsTable.userId, req.user!.id),
-        eq(groupMembershipsTable.isActive, true)
       )
     );
 
+  const filtered = memberships.filter((m) => m.isActive || m.pendingApproval);
+
   const groups = await Promise.all(
-    memberships.map(async (m) => {
+    filtered.map(async (m) => {
       const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, m.groupId));
-      return team ? { id: team.id, name: team.name, role: m.role, isActive: m.groupId === req.user!.groupId } : null;
+      if (!team) return null;
+      return {
+        id: team.id,
+        name: team.name,
+        role: m.role,
+        isActive: m.groupId === req.user!.groupId,
+        pendingApproval: m.pendingApproval ?? false,
+      };
     })
   );
 

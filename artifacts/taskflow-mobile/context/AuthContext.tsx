@@ -42,6 +42,7 @@ export interface GroupSummary {
   name: string;
   role: string;
   isActive?: boolean;
+  pendingApproval?: boolean;
 }
 
 interface AuthContextValue {

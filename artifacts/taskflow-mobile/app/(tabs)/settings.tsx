@@ -257,47 +257,70 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* Group Switcher — shown only when user belongs to multiple groups */}
-        {groups.length > 1 && (
+        {/* Group Switcher — shown when user belongs to multiple groups or has a pending request */}
+        {(groups.length > 1 || groups.some((g) => g.pendingApproval)) && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>GROUPS</Text>
             <View style={[styles.settingsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              {groups.map((g, i) => (
-                <TouchableOpacity
-                  key={g.id}
-                  style={[
-                    styles.settingRow,
-                    i < groups.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
-                    switchingGroup && { opacity: 0.6 },
-                  ]}
-                  onPress={async () => {
-                    if (g.id === activeGroupId || switchingGroup) return;
-                    setSwitchingGroup(true);
-                    try {
-                      await switchGroup(g.id);
-                      queryClient.clear();
-                      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    } catch {
-                      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                    } finally {
-                      setSwitchingGroup(false);
-                    }
-                  }}
-                  disabled={switchingGroup}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
-                    <Feather name="layers" size={18} color={colors.primary} />
+              {groups.map((g, i) => {
+                const isPending = !!g.pendingApproval;
+                return isPending ? (
+                  <View
+                    key={g.id}
+                    style={[
+                      styles.settingRow,
+                      i < groups.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+                      { opacity: 0.55 },
+                    ]}
+                  >
+                    <View style={[styles.settingIcon, { backgroundColor: '#F59E0B20' }]}>
+                      <Feather name="clock" size={18} color="#F59E0B" />
+                    </View>
+                    <View style={styles.settingLabel}>
+                      <Text style={[styles.settingName, { color: colors.foreground }]}>{g.name}</Text>
+                      <Text style={[styles.settingDesc, { color: colors.mutedForeground }]}>{g.role}</Text>
+                    </View>
+                    <View style={{ backgroundColor: '#FEF3C7', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: '#F59E0B50' }}>
+                      <Text style={{ color: '#92400E', fontSize: 11, fontWeight: '600' as const }}>Pending</Text>
+                    </View>
                   </View>
-                  <View style={styles.settingLabel}>
-                    <Text style={[styles.settingName, { color: colors.foreground }]}>{g.name}</Text>
-                    <Text style={[styles.settingDesc, { color: colors.mutedForeground }]}>{g.role}</Text>
-                  </View>
-                  {g.id === activeGroupId && (
-                    <Feather name="check-circle" size={18} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
+                ) : (
+                  <TouchableOpacity
+                    key={g.id}
+                    style={[
+                      styles.settingRow,
+                      i < groups.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border },
+                      switchingGroup && { opacity: 0.6 },
+                    ]}
+                    onPress={async () => {
+                      if (g.id === activeGroupId || switchingGroup) return;
+                      setSwitchingGroup(true);
+                      try {
+                        await switchGroup(g.id);
+                        queryClient.clear();
+                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      } catch {
+                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                      } finally {
+                        setSwitchingGroup(false);
+                      }
+                    }}
+                    disabled={switchingGroup}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+                      <Feather name="layers" size={18} color={colors.primary} />
+                    </View>
+                    <View style={styles.settingLabel}>
+                      <Text style={[styles.settingName, { color: colors.foreground }]}>{g.name}</Text>
+                      <Text style={[styles.settingDesc, { color: colors.mutedForeground }]}>{g.role}</Text>
+                    </View>
+                    {g.id === activeGroupId && (
+                      <Feather name="check-circle" size={18} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         )}
