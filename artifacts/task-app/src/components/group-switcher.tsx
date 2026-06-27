@@ -45,6 +45,7 @@ export function GroupSwitcher() {
   const { data: groups = [] } = useQuery({
     queryKey: ["auth-groups"],
     queryFn: fetchGroups,
+    refetchInterval: 30_000,
   });
 
   if (groups.length <= 1) return null;

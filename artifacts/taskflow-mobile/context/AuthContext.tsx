@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
 const storage = Platform.OS === 'web'
@@ -59,12 +59,15 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   updateUser: (user: User) => void;
   switchGroup: (groupId: number) => Promise<void>;
+  refreshGroups: () => Promise<void>;
   enableBiometric: () => Promise<boolean>;
   disableBiometric: () => Promise<void>;
   loginWithBiometric: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+const GROUPS_POLL_INTERVAL = 30_000;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -75,10 +78,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [hasSavedCredentials, setHasSavedCredentials] = useState(false);
+  const groupsPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     initAuth();
   }, []);
+
+  useEffect(() => {
+    if (groupsPollRef.current) {
+      clearInterval(groupsPollRef.current);
+      groupsPollRef.current = null;
+    }
+    if (_currentToken) {
+      groupsPollRef.current = setInterval(() => {
+        if (_currentToken) fetchGroups(_currentToken).catch(() => {});
+      }, GROUPS_POLL_INTERVAL);
+    }
+    return () => {
+      if (groupsPollRef.current) {
+        clearInterval(groupsPollRef.current);
+        groupsPollRef.current = null;
+      }
+    };
+  }, [token]);
 
   async function initAuth() {
     try {
@@ -131,6 +153,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setGroups(data);
       }
     } catch {}
+  }
+
+  async function refreshGroups() {
+    if (_currentToken) await fetchGroups(_currentToken);
   }
 
   async function login(mobile: string, password: string) {
@@ -256,7 +282,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mustChangePassword: user?.mustChangePassword ?? false,
       hasSavedCredentials,
       biometricEnabled, biometricAvailable,
-      login, logout, updateUser, switchGroup,
+      login, logout, updateUser, switchGroup, refreshGroups,
       enableBiometric, disableBiometric, loginWithBiometric,
     }}>
       {children}
