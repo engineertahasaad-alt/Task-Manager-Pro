@@ -10,8 +10,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useChangePassword } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { KeyRound, LogOut, User, Users, Copy, Check, ShieldCheck } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { KeyRound, LogOut, User, Users, Copy, Check, ShieldCheck, UserPlus } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 
 const passwordSchema = z.object({
@@ -23,12 +23,43 @@ const passwordSchema = z.object({
   path: ["confirmPassword"],
 });
 
+const joinGroupSchema = z.object({
+  inviteCode: z.string().min(1, "Invite code is required"),
+});
+
 export default function Settings() {
   const { data: user } = useGetMe();
   const { toast } = useToast();
   const changePasswordMutation = useChangePassword();
   const [copied, setCopied] = useState(false);
   const isOwner = user?.role === "owner";
+  const [joinSuccess, setJoinSuccess] = useState(false);
+
+  const joinGroupMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof joinGroupSchema>) => {
+      const token = localStorage.getItem("taskaya_token");
+      const res = await fetch("/api/auth/join-group", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ inviteCode: values.inviteCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to send request");
+      return data;
+    },
+    onSuccess: () => {
+      setJoinSuccess(true);
+      joinForm.reset();
+    },
+    onError: (err: any) => {
+      toast({ title: "Could not join group", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const joinForm = useForm<z.infer<typeof joinGroupSchema>>({
+    resolver: zodResolver(joinGroupSchema),
+    defaultValues: { inviteCode: "" },
+  });
 
   const { data: teamInfo } = useQuery({
     queryKey: ["team-info"],
@@ -131,6 +162,46 @@ export default function Settings() {
                 <p className="text-md font-medium capitalize">{user?.role}</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-indigo-100 bg-indigo-50/30">
+          <CardHeader>
+            <CardTitle className="flex items-center"><UserPlus className="mr-2 h-5 w-5 text-indigo-600" /> Join Another Group</CardTitle>
+            <CardDescription>Enter an invite code to request access to a different group.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {joinSuccess ? (
+              <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-4 text-green-800">
+                <Check className="h-5 w-5 text-green-600 shrink-0" />
+                <div>
+                  <p className="font-medium">Request sent!</p>
+                  <p className="text-sm text-green-700">Waiting for the owner to approve you.</p>
+                </div>
+              </div>
+            ) : (
+              <Form {...joinForm}>
+                <form onSubmit={joinForm.handleSubmit((v) => joinGroupMutation.mutate(v))} className="flex items-end gap-3">
+                  <FormField control={joinForm.control} name="inviteCode" render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel>Invite Code</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g. A1B2C3D4"
+                          className="font-mono uppercase"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <Button type="submit" disabled={joinGroupMutation.isPending}>
+                    {joinGroupMutation.isPending ? "Sending…" : "Send Request"}
+                  </Button>
+                </form>
+              </Form>
+            )}
           </CardContent>
         </Card>
 

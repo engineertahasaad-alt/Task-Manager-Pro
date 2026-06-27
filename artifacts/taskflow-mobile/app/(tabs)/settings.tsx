@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
-  Alert, ScrollView, Platform, Clipboard,
+  Alert, ScrollView, Platform, Clipboard, TextInput,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,9 +22,27 @@ export default function SettingsScreen() {
   } = useAuth();
 
   const [switchingGroup, setSwitchingGroup] = useState(false);
-
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [joinSuccess, setJoinSuccess] = useState(false);
+
+  const joinGroupMutation = useMutation({
+    mutationFn: () =>
+      customFetch<{ pendingApproval: boolean; team: { id: number; name: string } }>('/api/auth/join-group', {
+        method: 'POST',
+        body: JSON.stringify({ inviteCode: joinCode.trim().toUpperCase() }),
+      }),
+    onSuccess: () => {
+      setJoinSuccess(true);
+      setJoinCode('');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    },
+    onError: (err: any) => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      Alert.alert('Could not join group', err?.message ?? 'Invalid invite code');
+    },
+  });
 
   const { data: teamInfo } = useQuery({
     queryKey: ['team-info'],
@@ -280,6 +298,63 @@ export default function SettingsScreen() {
           </View>
         )}
 
+        {/* Join a Group */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>JOIN A GROUP</Text>
+          <View style={[styles.settingsCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {joinSuccess ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: '#22C55E20' }}>
+                  <Feather name="check-circle" size={18} color="#22C55E" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.settingName, { color: colors.foreground }]}>Request sent!</Text>
+                  <Text style={[styles.settingDesc, { color: colors.mutedForeground }]}>Waiting for the owner to approve you.</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={{ padding: 14, gap: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={[styles.settingIcon, { backgroundColor: colors.primary + '20' }]}>
+                    <Feather name="user-plus" size={18} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.settingName, { color: colors.foreground }]}>Enter invite code</Text>
+                    <Text style={[styles.settingDesc, { color: colors.mutedForeground }]}>Request access to another group</Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TextInput
+                    style={[
+                      styles.joinInput,
+                      { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground, flex: 1 },
+                    ]}
+                    placeholder="e.g. A1B2C3D4"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={joinCode}
+                    onChangeText={(t) => setJoinCode(t.toUpperCase())}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.joinBtn,
+                      { backgroundColor: colors.primary, opacity: (!joinCode.trim() || joinGroupMutation.isPending) ? 0.5 : 1 },
+                    ]}
+                    onPress={() => joinGroupMutation.mutate()}
+                    disabled={!joinCode.trim() || joinGroupMutation.isPending}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.joinBtnText}>
+                      {joinGroupMutation.isPending ? 'Sending…' : 'Send Request'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+
         {/* Team Invite Code */}
         {teamInfo && (
           <View style={styles.section}>
@@ -476,4 +551,12 @@ const styles = StyleSheet.create({
   },
   logoutText: { fontSize: 16, fontWeight: '500' as const, fontFamily: 'Inter_500Medium' },
   version: { textAlign: 'center', fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 16 },
+  joinInput: {
+    borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9,
+    fontSize: 15, fontFamily: 'Inter_400Regular', letterSpacing: 1,
+  },
+  joinBtn: {
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8,
+  },
+  joinBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
 });

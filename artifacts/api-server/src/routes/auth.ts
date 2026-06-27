@@ -322,6 +322,77 @@ router.get("/auth/groups", requireAuth, async (req, res): Promise<void> => {
   res.json(groups.filter(Boolean));
 });
 
+router.post("/auth/join-group", requireAuth, async (req, res): Promise<void> => {
+  const schema = z.object({ inviteCode: z.string().min(1) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "inviteCode is required" });
+    return;
+  }
+
+  const { inviteCode } = parsed.data;
+  const [team] = await db.select().from(teamsTable).where(eq(teamsTable.inviteCode, inviteCode.toUpperCase()));
+  if (!team) {
+    res.status(404).json({ error: "Invalid invite code" });
+    return;
+  }
+
+  const [existingMembership] = await db
+    .select()
+    .from(groupMembershipsTable)
+    .where(
+      and(
+        eq(groupMembershipsTable.userId, req.user!.id),
+        eq(groupMembershipsTable.groupId, team.id)
+      )
+    );
+  if (existingMembership) {
+    res.status(409).json({ error: "You are already a member of this group" });
+    return;
+  }
+
+  const [currentUser] = await db.select().from(usersTable).where(eq(usersTable.id, req.user!.id));
+
+  await db.insert(groupMembershipsTable).values({
+    userId: req.user!.id,
+    groupId: team.id,
+    role: "member",
+    isActive: false,
+    pendingApproval: true,
+  });
+
+  await logAudit("member_joined", req.user!.id, team.id, "user", req.user!.id, { groupName: team.name, pendingApproval: true });
+
+  try {
+    const managerMemberships = await db
+      .select()
+      .from(groupMembershipsTable)
+      .where(
+        and(
+          eq(groupMembershipsTable.groupId, team.id),
+          inArray(groupMembershipsTable.role, ["owner", "deputy"]),
+          eq(groupMembershipsTable.isActive, true)
+        )
+      );
+    const notifMessage = `${currentUser?.fullName ?? "Someone"} requested to join ${team.name}`;
+    for (const mgr of managerMemberships) {
+      await db.insert(notificationsTable).values({
+        userId: mgr.userId,
+        type: "join_request",
+        message: notifMessage,
+      });
+      await sendPushToUser(mgr.userId, "New join request", notifMessage);
+    }
+  } catch {
+    /* best-effort */
+  }
+
+  res.status(201).json({
+    pendingApproval: true,
+    team: { id: team.id, name: team.name },
+  });
+});
+
 router.post("/auth/change-password", requireAuth, async (req, res): Promise<void> => {
   const parsed = ChangePasswordBody.safeParse(req.body);
   if (!parsed.success) {
