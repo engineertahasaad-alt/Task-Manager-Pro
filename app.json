@@ -5,10 +5,15 @@
     "owner": "tahasaad1989",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "taskaya",
     "icon": "./artifacts/taskflow-mobile/assets/images/icon.png",
+    "scheme": "taskaya",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./artifacts/taskflow-mobile/assets/images/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAFAFA"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.taskaya.app"
@@ -18,8 +23,40 @@
       "adaptiveIcon": {
         "foregroundImage": "./artifacts/taskflow-mobile/assets/images/icon.png",
         "backgroundColor": "#4F6EF7"
-      }
+      },
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
+    "web": {
+      "favicon": "./artifacts/taskflow-mobile/assets/images/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-router",
+        {
+          "origin": "https://replit.com/"
+        }
+      ],
+      "expo-font",
+      "expo-web-browser",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Use Face ID to sign in quickly and securely."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./artifacts/taskflow-mobile/assets/images/icon.png",
+          "color": "#4F6EF7",
+          "sounds": [],
+          "mode": "production"
+        }
+      ]
+    ],
     "updates": {
       "url": "https://u.expo.dev/f862d3f1-8e6f-45cf-b033-46cde59ff22a",
       "enabled": true,
@@ -28,6 +65,10 @@
     },
     "runtimeVersion": {
       "policy": "sdkVersion"
+    },
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
     },
     "extra": {
       "eas": {
