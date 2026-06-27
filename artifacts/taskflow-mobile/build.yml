@@ -1,0 +1,13 @@
+build:
+  name: Build Android APK (pnpm monorepo)
+  steps:
+    - eas/checkout
+    - run:
+        name: Install workspace dependencies from repo root
+        command: |
+          REPO_ROOT=$(git -C "$EAS_BUILD_WORKINGDIR" rev-parse --show-toplevel)
+          echo "Repo root: $REPO_ROOT"
+          cd "$REPO_ROOT"
+          pnpm install --no-frozen-lockfile
+    - eas/prebuild
+    - eas/gradle
