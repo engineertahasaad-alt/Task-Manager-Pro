@@ -11,6 +11,7 @@ import { useColors } from '@/hooks/useColors';
 import { useAuth } from '@/context/AuthContext';
 import { useOffline } from '@/context/OfflineContext';
 import { TaskCard } from '@/components/TaskCard';
+import { GroupBadge } from '@/components/GroupBadge';
 
 type Status = 'open' | 'completed' | 'approved' | 'reopened';
 type FilterValue = Status | null | 'delegated';
@@ -75,7 +76,10 @@ export default function TasksScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPadding, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Tasks</Text>
+        <View>
+          <Text style={[styles.title, { color: colors.foreground }]}>Tasks</Text>
+          <GroupBadge />
+        </View>
         <View style={styles.headerRight}>
           {showingCached ? (
             <View style={[styles.cachedBadge, { backgroundColor: colors.card, borderColor: colors.border }]}>

@@ -11,6 +11,7 @@ import * as Haptics from 'expo-haptics';
 import { useListNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useColors } from '@/hooks/useColors';
+import { GroupBadge } from '@/components/GroupBadge';
 
 const NOTIF_ICONS: Record<string, { icon: string; color: string }> = {
   task_assigned: { icon: 'user-plus', color: '#4F6EF7' },
@@ -157,7 +158,10 @@ export default function NotificationsScreen() {
           { paddingTop: topPadding, backgroundColor: colors.background, borderBottomColor: colors.border },
         ]}
       >
-        <Text style={[styles.title, { color: colors.foreground }]}>Notifications</Text>
+        <View>
+          <Text style={[styles.title, { color: colors.foreground }]}>Notifications</Text>
+          <GroupBadge />
+        </View>
         {unreadCount > 0 ? (
           <TouchableOpacity
             style={[styles.markAllBtn, { backgroundColor: colors.primary + '15' }]}

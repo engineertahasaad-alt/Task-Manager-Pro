@@ -10,6 +10,7 @@ import { useGetMyTasks, useGetDashboardSummary, useGetWorkloadByEmployee } from 
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '@/context/AuthContext';
 import { TaskCard } from '@/components/TaskCard';
+import { GroupBadge } from '@/components/GroupBadge';
 
 type StatusFilter = 'open' | 'completed' | 'approved' | 'reopened' | null;
 
@@ -140,6 +141,7 @@ export default function DashboardScreen() {
           <Text style={[styles.userName, { color: colors.foreground }]}>
             {user?.fullName?.split(' ')[0] ?? 'There'}
           </Text>
+          <GroupBadge />
         </View>
         <View style={[styles.roleBadge, { backgroundColor: colors.primary + '15' }]}>
           <Text style={[styles.roleText, { color: colors.primary }]}>{user?.role}</Text>

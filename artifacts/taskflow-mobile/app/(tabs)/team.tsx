@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useListUsers, useCreateUser, useUpdateUser, useDisableUser, useResetUserPassword, getListUsersQueryKey } from '@workspace/api-client-react';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '@/context/AuthContext';
+import { GroupBadge } from '@/components/GroupBadge';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { customFetch } from '@workspace/api-client-react';
 import type { User } from '@workspace/api-client-react';
@@ -202,7 +203,10 @@ export default function TeamScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPadding, backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Team</Text>
+        <View>
+          <Text style={[styles.title, { color: colors.foreground }]}>Team</Text>
+          <GroupBadge />
+        </View>
         <View style={styles.headerRight}>
           <View style={[styles.countBadge, { backgroundColor: colors.muted }]}>
             <Text style={[styles.countText, { color: colors.mutedForeground }]}>

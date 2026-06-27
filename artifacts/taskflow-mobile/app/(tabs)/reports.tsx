@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGetDailyReport, useGetEmployeeReport, useListUsers } from '@workspace/api-client-react';
 import { useColors } from '@/hooks/useColors';
 import { useAuth } from '@/context/AuthContext';
+import { GroupBadge } from '@/components/GroupBadge';
 
 function formatDate(d: Date) {
   const y = d.getFullYear();
@@ -79,7 +80,10 @@ export default function ReportsScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.header, { paddingTop: topPadding, borderBottomColor: colors.border, backgroundColor: colors.background }]}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Reports</Text>
+          <View>
+            <Text style={[styles.title, { color: colors.foreground }]}>Reports</Text>
+            <GroupBadge />
+          </View>
         </View>
         <View style={styles.empty}>
           <Feather name="lock" size={36} color={colors.mutedForeground} />
@@ -93,7 +97,10 @@ export default function ReportsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPadding, borderBottomColor: colors.border, backgroundColor: colors.background }]}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Reports</Text>
+        <View>
+          <Text style={[styles.title, { color: colors.foreground }]}>Reports</Text>
+          <GroupBadge />
+        </View>
       </View>
 
       <ScrollView
