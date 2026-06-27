@@ -57,6 +57,15 @@
         }
       ]
     ],
+    "updates": {
+      "url": "https://u.expo.dev/f862d3f1-8e6f-45cf-b033-46cde59ff22a",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
