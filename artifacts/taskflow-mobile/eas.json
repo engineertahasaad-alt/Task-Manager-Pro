@@ -9,7 +9,6 @@
       "distribution": "internal"
     },
     "preview": {
-      "config": "build.yml",
       "distribution": "internal",
       "android": {
         "buildType": "apk",
