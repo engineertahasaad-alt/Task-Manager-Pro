@@ -7,6 +7,9 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "android": {
+        "image": "latest"
+      },
       "env": {
         "EXPO_PUBLIC_DOMAIN": "1c68d96f-1746-461f-bc2a-3bdc5ce5fe52-00-22dwvqskyd91x.kirk.replit.dev"
       }
@@ -15,6 +18,7 @@
       "distribution": "internal",
       "channel": "preview",
       "android": {
+        "image": "latest",
         "buildType": "apk",
         "credentialsSource": "remote"
       },
@@ -29,6 +33,7 @@
       "autoIncrement": true,
       "channel": "production",
       "android": {
+        "image": "latest",
         "buildType": "app-bundle",
         "credentialsSource": "remote"
       },
