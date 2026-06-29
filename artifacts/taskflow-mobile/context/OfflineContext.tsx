@@ -34,7 +34,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 4000);
-      const res = await fetch(`https://${domain}/api/health`, {
+      const res = await fetch(`https://${domain}/api/healthz`, {
         signal: controller.signal,
         cache: 'no-store',
       });

@@ -11,7 +11,7 @@
         "image": "latest"
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "1c68d96f-1746-461f-bc2a-3bdc5ce5fe52-00-22dwvqskyd91x.kirk.replit.dev"
+        "EXPO_PUBLIC_DOMAIN": "task-manager-pro-tahasaad2.replit.app"
       }
     },
     "preview": {
@@ -26,7 +26,7 @@
         "simulator": true
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "1c68d96f-1746-461f-bc2a-3bdc5ce5fe52-00-22dwvqskyd91x.kirk.replit.dev"
+        "EXPO_PUBLIC_DOMAIN": "task-manager-pro-tahasaad2.replit.app"
       }
     },
     "production": {
@@ -38,7 +38,7 @@
         "credentialsSource": "remote"
       },
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "1c68d96f-1746-461f-bc2a-3bdc5ce5fe52-00-22dwvqskyd91x.kirk.replit.dev"
+        "EXPO_PUBLIC_DOMAIN": "task-manager-pro-tahasaad2.replit.app"
       }
     }
   },

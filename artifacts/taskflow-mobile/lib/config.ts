@@ -10,7 +10,7 @@
 //
 // NOTE: set PRODUCTION_DOMAIN to your published Replit Deployment domain,
 // e.g. "taskaya.replit.app" (no protocol, no trailing slash).
-const PRODUCTION_DOMAIN = "__SET_DEPLOYMENT_DOMAIN__";
+const PRODUCTION_DOMAIN = "task-manager-pro-tahasaad2.replit.app";
 
 export const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN || PRODUCTION_DOMAIN;
 export const API_BASE_URL = `https://${API_DOMAIN}`;
