@@ -16,6 +16,9 @@ Symptom: the Taskaya Android app shows no system notification at all — no soun
 3. Upload the FCM **V1** service-account key to EAS (`eas credentials` → Android → Push notifications) so Expo's servers can call FCM.
 4. Run a NEW build (`eas build -p android --profile preview`) and install it. Only then will tokens register and system notifications arrive.
 
+## EAS build-credits blocker (account-level, not code)
+`eas build` can accept an upload and show the build as `in progress` while it is actually queued behind exhausted credits — the CLI prints "You've reached your included build credits this billing period. New builds are blocked until your billing period resets." So `in progress` does NOT mean it will finish. Completion is gated by Expo billing (`expo.dev/accounts/<owner>/settings/billing`); nothing in the repo can unblock it — the owner must upgrade or wait for the period reset. When verifying a build, check the billing/credits line in the build log, not just the build status.
+
 ## In-app realtime (OTA-shippable, already done)
 The notifications list felt stale / needed a tab close+reopen because the list query had no polling and nothing refreshed it on push receipt. Working pattern:
 - `useListNotifications({ query: { queryKey: getListNotificationsQueryKey(), refetchInterval, refetchOnMount: 'always' } })` on the screen; badge poller in `_layout.tsx` also polls.
