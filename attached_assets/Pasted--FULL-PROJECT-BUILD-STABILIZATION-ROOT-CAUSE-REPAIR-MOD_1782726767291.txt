@@ -1,0 +1,229 @@
+# FULL PROJECT BUILD STABILIZATION & ROOT CAUSE REPAIR MODE
+
+You are acting as a Senior Expo, React Native, EAS Build, Android, TypeScript, and Dependency Engineer.
+
+Your objective is **NOT** to fix the current error.
+
+Your objective is to make this project capable of producing a **successful production APK build** through **Expo/EAS** with **ZERO build errors**.
+
+---
+
+# PRIMARY RULE
+
+Never use "trial-and-error" or patch individual errors.
+
+Do NOT stop after fixing the first error.
+
+Instead, perform a complete root cause analysis of the ENTIRE project, identify every issue that can break the build, and repair them together.
+
+Continue working until the project is stable.
+
+---
+
+# PHASE 1 — FULL PROJECT ANALYSIS
+
+Before changing a single file:
+
+Inspect the ENTIRE repository, including but not limited to:
+
+* package.json
+* package-lock.json / yarn.lock / bun.lock
+* app.json / app.config.js / app.config.ts
+* eas.json
+* babel.config.js
+* metro.config.js
+* tsconfig.json
+* expo plugins
+* Android configuration
+* Native modules
+* Environment variables
+* Build profiles
+* Expo Router
+* React Native
+* Expo SDK
+* All installed packages
+* Peer dependencies
+* Dependency tree
+* Build scripts
+* Assets
+* Fonts
+* Permissions
+* Splash configuration
+* Icons
+* OTA Updates
+* EAS configuration
+* Gradle-related configuration (if applicable)
+
+Search the entire repository for every reference that may be affected by any modification.
+
+Never modify one file without checking every related file.
+
+---
+
+# PHASE 2 — ROOT CAUSE ANALYSIS
+
+Identify ALL issues including:
+
+* Dependency conflicts
+* Version mismatches
+* Peer dependency conflicts
+* Duplicate packages
+* Deprecated packages
+* Unsupported packages
+* Unsupported Expo plugins
+* Invalid config fields
+* Invalid app.json settings
+* Invalid eas.json settings
+* Metro configuration issues
+* Babel issues
+* TypeScript issues
+* Expo Router issues
+* React Native compatibility issues
+* Android compatibility issues
+* Missing assets
+* Invalid imports
+* Circular imports
+* Missing environment variables
+* Invalid permissions
+* Build script issues
+* Plugin ordering issues
+* Native module incompatibilities
+
+Do NOT begin fixing until the complete list of issues has been identified.
+
+---
+
+# PHASE 3 — BUILD VALIDATION
+
+Run every possible validation before making changes, including:
+
+* Expo Doctor
+* Dependency validation
+* npm dependency inspection
+* Peer dependency inspection
+* TypeScript type checking
+* Expo config validation
+* EAS configuration validation
+* Package compatibility verification
+* Expo SDK compatibility verification
+* React Native compatibility verification
+
+---
+
+# PHASE 4 — SYSTEMATIC REPAIR
+
+Create a repair plan.
+
+Then repair ALL detected issues together.
+
+Do NOT perform isolated fixes.
+
+Every change must preserve project architecture.
+
+Every package upgrade or downgrade must be justified by compatibility with the current Expo SDK.
+
+Never install packages blindly.
+
+Never remove packages unless they are genuinely incompatible.
+
+Update every related configuration simultaneously.
+
+---
+
+# PHASE 5 — ITERATIVE VERIFICATION
+
+After each repair round:
+
+Run another complete project scan.
+
+If fixing one issue introduces another:
+
+Continue automatically.
+
+Repeat until:
+
+* No dependency conflicts remain.
+* No Expo Doctor issues remain.
+* No TypeScript errors remain.
+* No Metro issues remain.
+* No Babel issues remain.
+* No Config issues remain.
+* No Plugin issues remain.
+* No Android build issues remain.
+* No EAS build issues remain.
+
+Never stop after the first successful fix.
+
+Continue until the project reaches a stable production state.
+
+---
+
+# PHASE 6 — BUILD LOG ANALYSIS
+
+If a build log exists:
+
+Analyze the ENTIRE log.
+
+Do not focus only on the first visible error.
+
+Trace every reported error back to its original root cause.
+
+Fix every issue discovered in the log during the same repair cycle.
+
+If multiple errors originate from one underlying problem, fix the root cause rather than each symptom individually.
+
+---
+
+# PHASE 7 — FINAL BUILD READINESS
+
+Before declaring success, verify that the project is fully capable of completing:
+
+* eas build --platform android
+* Production APK build
+* Production AAB build
+* Expo SDK compatibility
+* React Native compatibility
+* EAS Build compatibility
+
+Do not declare success unless all verification checks pass.
+
+---
+
+# WORKFLOW RULES
+
+* Think about the project as one integrated system.
+* Never perform superficial fixes.
+* Never ask me to rebuild after every small change.
+* Never stop because a new error appears.
+* Continue investigating automatically.
+* Continue repairing automatically.
+* Continue validating automatically.
+* Continue until no known build blockers remain.
+
+---
+
+# OUTPUT FORMAT
+
+When everything is complete, provide only:
+
+## Root Causes Found
+
+A concise list of every root cause identified.
+
+## Changes Made
+
+A complete list of every modification performed.
+
+## Remaining Blockers
+
+If any blocker still exists, explain why.
+
+If the blocker can be fixed automatically, fix it instead of reporting it.
+
+Only report blockers that absolutely require human intervention.
+
+---
+
+# FINAL OBJECTIVE
+
+The task is complete **ONLY** when the project is capable of generating a successful production APK through Expo/EAS with zero known build errors and no remaining dependency, configuration, compatibility, or build blockers.

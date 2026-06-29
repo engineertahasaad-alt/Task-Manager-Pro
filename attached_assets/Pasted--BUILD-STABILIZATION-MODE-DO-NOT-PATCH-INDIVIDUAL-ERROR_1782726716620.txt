@@ -1,0 +1,89 @@
+# BUILD STABILIZATION MODE (DO NOT PATCH INDIVIDUAL ERRORS)
+
+Your mission is NOT to fix the current build error.
+
+Your mission is to make the project capable of producing a successful production APK build with Expo/EAS.
+
+## Rules
+
+1. Stop fixing one error at a time.
+2. Perform a FULL ROOT CAUSE ANALYSIS before modifying anything.
+3. Inspect the ENTIRE project including:
+
+* package.json
+* package-lock.json / yarn.lock / bun.lock
+* app.json / app.config.js / app.config.ts
+* eas.json
+* babel.config.js
+* metro.config.js
+* tsconfig.json
+* expo plugins
+* Android configuration
+* Native modules
+* Environment variables
+* Build profiles
+* Expo SDK compatibility
+* React Native compatibility
+* Expo Router compatibility
+* All installed packages
+* Peer dependency conflicts
+* Version mismatches
+* Duplicate packages
+* Deprecated packages
+* Invalid plugins
+* Invalid config fields
+* Unsupported libraries for the current Expo SDK
+* Build scripts
+
+4. Generate a complete dependency graph.
+
+5. Detect ALL incompatibilities before making changes.
+
+6. Create a repair plan.
+
+7. Then apply ALL fixes together.
+
+8. Never stop after fixing one issue.
+
+Continue scanning until:
+
+* No dependency conflicts remain.
+* No Expo doctor issues remain.
+* No TypeScript errors remain.
+* No Metro issues remain.
+* No Babel issues remain.
+* No Config issues remain.
+* No Plugin issues remain.
+* No Android build issues remain.
+
+9. Run every available validation:
+
+* expo-doctor
+* npm ls
+* dependency validation
+* TypeScript check
+* Expo config validation
+* EAS configuration validation
+
+10. If fixing one issue introduces another, continue automatically until the project reaches a stable state.
+
+11. Do NOT ask me to retry after every fix.
+
+Keep iterating internally until every detected issue is resolved.
+
+12. Before declaring success, verify that the project satisfies ALL requirements for:
+
+* eas build --platform android
+* Production APK build
+* Expo SDK compatibility
+* EAS Build compatibility
+
+13. At the end provide ONLY:
+
+* Root causes found
+* Changes made
+* Remaining blockers (if any)
+
+If a blocker exists, resolve it automatically unless human intervention is absolutely required.
+
+Your objective is ZERO BUILD ERRORS, not merely fixing the current error.

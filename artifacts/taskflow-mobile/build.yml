@@ -1,19 +1,25 @@
 build:
-  name: Build Android APK (pnpm monorepo)
+  name: Build (pnpm monorepo)
   steps:
     - eas/checkout
     - run:
-        name: Install compatible pnpm version
-        command: npm install -g pnpm@10 --force
-    - run:
-        name: Install all workspace dependencies
+        name: Set up pnpm
         command: |
-          REPO_ROOT=$(git -C "$EAS_BUILD_WORKINGDIR" rev-parse --show-toplevel 2>/dev/null || echo "$EAS_BUILD_WORKINGDIR")
+          corepack enable pnpm 2>/dev/null || npm install -g pnpm@10.26.1 --force
+          pnpm --version
+    - run:
+        name: Install workspace dependencies from repo root
+        command: |
+          REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+          if [ -z "$REPO_ROOT" ]; then
+            REPO_ROOT="$(cd "$(dirname "$(dirname "$EAS_BUILD_WORKINGDIR")")" && pwd)"
+          fi
           echo "Repo root: $REPO_ROOT"
           cd "$REPO_ROOT"
           pnpm install --no-frozen-lockfile --shamefully-hoist
     - run:
-        name: Expo Prebuild (no install)
-        working_directory: $EAS_BUILD_WORKINGDIR
-        command: npx expo prebuild --platform android --no-install --clean
+        name: Run Expo prebuild
+        command: |
+          cd "$EAS_BUILD_WORKINGDIR"
+          npx expo prebuild --platform $EAS_BUILD_PLATFORM --no-install --clean
     - eas/gradle
