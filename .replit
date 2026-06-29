@@ -20,6 +20,10 @@ author = "agent"
 task = "workflow.run"
 args = "EAS OTA Publish"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "EAS Android Build"
+
 [[workflows.workflow]]
 name = "EAS OTA Publish"
 author = "agent"
@@ -27,6 +31,17 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd artifacts/taskflow-mobile && npx --yes eas-cli@latest update --channel preview --message \"Notifications: in-app realtime (15s poll + foreground-receive invalidate), push-setup error logging; server logs Expo ticket errors + drops DeviceNotRegistered tokens\" --non-interactive"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "EAS Android Build"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd artifacts/taskflow-mobile && npx --yes eas-cli@latest build --platform android --profile preview --non-interactive"
 
 [workflows.workflow.metadata]
 outputType = "console"

@@ -20,6 +20,7 @@
     },
     "android": {
       "package": "com.taskaya.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#4F6EF7"
