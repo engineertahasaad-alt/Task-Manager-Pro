@@ -14,6 +14,7 @@ import {
 } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useColors } from '@/hooks/useColors';
+import { API_DOMAIN } from '@/lib/config';
 import { useAuth, getCurrentToken } from '@/context/AuthContext';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
 
@@ -246,7 +247,7 @@ function DelegateModal({
 }) {
   const { groups } = useAuth();
   const { user, activeGroupId } = useAuth();
-  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  const domain = API_DOMAIN;
   const delegateMutation = useDelegateTask();
   const queryClient = useQueryClient();
 
@@ -458,7 +459,7 @@ export default function TaskDetailScreen() {
   const { mutateAsync: reopen } = useReopenTask();
   const { mutate: sendMsg } = useSendMessage();
 
-  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  const domain = API_DOMAIN;
 
   const isManager = user?.role === 'owner' || user?.role === 'deputy';
   const taskAssignees = (task as any)?.assignees as Array<{ id: number; fullName: string }> | undefined;

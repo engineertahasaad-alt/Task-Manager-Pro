@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/context/AuthContext';
 import { useColors } from '@/hooks/useColors';
+import { API_DOMAIN } from '@/lib/config';
 import { router } from 'expo-router';
 
 export default function SignupScreen() {
@@ -37,7 +38,7 @@ export default function SignupScreen() {
     setError('');
     setIsLoading(true);
     try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN;
+      const domain = API_DOMAIN;
       const body: any = { fullName: fullName.trim(), mobile: mobile.trim(), password };
       if (joinMode === 'join') body.inviteCode = inviteCode.trim().toUpperCase();
       else if (teamName.trim()) body.teamName = teamName.trim();

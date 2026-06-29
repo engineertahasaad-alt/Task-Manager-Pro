@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_DOMAIN } from '@/lib/config';
 
 const TASKS_CACHE_KEY = 'taskaya_tasks_cache';
 export const PING_INTERVAL_MS = 15_000;
@@ -26,7 +27,7 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
   const [cachedTasks, setCachedTasks] = useState<any[] | null>(null);
   const cachedTasksRef = useRef<any[] | null>(null);
   const pingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const domain = process.env.EXPO_PUBLIC_DOMAIN;
+  const domain = API_DOMAIN;
 
   const ping = useCallback(async () => {
     if (!domain) return;

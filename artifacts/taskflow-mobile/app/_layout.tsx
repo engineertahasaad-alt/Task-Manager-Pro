@@ -18,8 +18,9 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth, getCurrentToken } from "@/context/AuthContext";
 import { OfflineProvider } from "@/context/OfflineContext";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { API_BASE_URL, API_DOMAIN } from "@/lib/config";
 
-setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+setBaseUrl(API_BASE_URL);
 setAuthTokenGetter(() => getCurrentToken());
 
 SplashScreen.preventAutoHideAsync();
@@ -153,7 +154,7 @@ function PushSetup() {
 
       const tokenData = await Notifications.getExpoPushTokenAsync();
       const token = tokenData.data;
-      const domain = process.env.EXPO_PUBLIC_DOMAIN;
+      const domain = API_DOMAIN;
       const authToken = getCurrentToken();
       if (!token || !authToken) return;
 

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
+import { API_DOMAIN } from '@/lib/config';
 
 const storage = Platform.OS === 'web'
   ? {
@@ -145,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchGroups(authToken: string) {
     try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN;
+      const domain = API_DOMAIN;
       const res = await fetch(`https://${domain}/api/auth/groups`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
@@ -161,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function login(mobile: string, password: string) {
-    const domain = process.env.EXPO_PUBLIC_DOMAIN;
+    const domain = API_DOMAIN;
     const res = await fetch(`https://${domain}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -210,7 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function switchGroup(groupId: number) {
     if (!_currentToken) return;
-    const domain = process.env.EXPO_PUBLIC_DOMAIN;
+    const domain = API_DOMAIN;
     const res = await fetch(`https://${domain}/api/auth/switch-group`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${_currentToken}` },

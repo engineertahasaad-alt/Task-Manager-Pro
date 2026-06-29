@@ -1,0 +1,1 @@
+- [Taskaya mobile API domain](taskaya-mobile-api-domain.md) — backend URL resolves via lib/config.ts; OTA needs hardcoded prod fallback because eas update ignores eas.json env.
