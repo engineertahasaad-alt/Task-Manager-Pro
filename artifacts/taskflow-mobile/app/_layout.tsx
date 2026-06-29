@@ -61,7 +61,11 @@ function AppBadgeSync() {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const { data: notifications } = useListNotifications({
-    query: { enabled: isAuthenticated && Platform.OS !== "web", refetchInterval: 60_000 },
+    query: {
+      queryKey: getListNotificationsQueryKey(),
+      enabled: isAuthenticated && Platform.OS !== "web",
+      refetchInterval: 20_000,
+    },
   });
 
   // Sync unread count to the OS app icon badge
@@ -92,6 +96,7 @@ function AppBadgeSync() {
 
 function PushSetup() {
   const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!isAuthenticated || Platform.OS === "web") return;
@@ -102,9 +107,15 @@ function PushSetup() {
     if (Platform.OS === "web") return;
 
     let responseSubscription: { remove: () => void } | null = null;
+    let receivedSubscription: { remove: () => void } | null = null;
 
     (async () => {
       const Notifications = await import("expo-notifications");
+
+      // Refresh the in-app list instantly when a push arrives in the foreground
+      receivedSubscription = Notifications.addNotificationReceivedListener(() => {
+        queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
+      });
 
       // Handle tap on a notification while the app is running or in background
       responseSubscription = Notifications.addNotificationResponseReceivedListener(
@@ -130,8 +141,9 @@ function PushSetup() {
 
     return () => {
       responseSubscription?.remove();
+      receivedSubscription?.remove();
     };
-  }, []);
+  }, [queryClient]);
 
   async function setupPushNotifications() {
     try {
@@ -161,28 +173,53 @@ function PushSetup() {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
-      if (finalStatus !== "granted") return;
+      if (finalStatus !== "granted") {
+        console.warn("[push] permission not granted:", finalStatus);
+        return;
+      }
 
       const projectId =
         Constants.expoConfig?.extra?.eas?.projectId ??
         (Constants as any).easConfig?.projectId;
-      const tokenData = await Notifications.getExpoPushTokenAsync(
-        projectId ? { projectId } : undefined
-      );
-      const token = tokenData.data;
+
+      let token: string | undefined;
+      try {
+        const tokenData = await Notifications.getExpoPushTokenAsync(
+          projectId ? { projectId } : undefined
+        );
+        token = tokenData.data;
+      } catch (err) {
+        // On a standalone Android build this throws when Firebase/FCM is not
+        // configured (no google-services.json + FCM v1 credentials in EAS).
+        console.warn("[push] getExpoPushTokenAsync failed:", err);
+        return;
+      }
+
       const domain = API_DOMAIN;
       const authToken = getCurrentToken();
-      if (!token || !authToken) return;
+      if (!token || !authToken) {
+        console.warn("[push] missing token or auth token; skipping registration");
+        return;
+      }
 
-      await fetch(`https://${domain}/api/push/token`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ token, platform: "expo" }),
-      }).catch(() => {});
-    } catch {}
+      try {
+        const res = await fetch(`https://${domain}/api/push/token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({ token, platform: "expo" }),
+        });
+        if (!res.ok) {
+          console.warn("[push] token registration failed:", res.status);
+        }
+      } catch (err) {
+        console.warn("[push] token registration request failed:", err);
+      }
+    } catch (err) {
+      console.warn("[push] setup failed:", err);
+    }
   }
 
   return null;

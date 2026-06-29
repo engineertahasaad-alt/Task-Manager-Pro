@@ -75,11 +75,25 @@ async function sendExpoPush(token: string, title: string, body: string, taskId?:
   try {
     const res = await fetch("https://exp.host/--/api/v2/push/send", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(message),
     });
+    const json: any = await res.json().catch(() => null);
     if (!res.ok) {
-      logger.warn({ token, status: res.status }, "Expo push failed");
+      logger.warn({ token, status: res.status, body: json }, "Expo push HTTP error");
+      return;
+    }
+    // Expo returns HTTP 200 even when a message fails; the error is in the ticket
+    const ticket = json?.data;
+    if (ticket?.status === "error") {
+      logger.warn(
+        { token, error: ticket.message, details: ticket.details },
+        "Expo push ticket error"
+      );
+      // Stale/invalid token: drop it so we stop sending to a dead device
+      if (ticket.details?.error === "DeviceNotRegistered") {
+        await db.delete(pushTokensTable).where(eq(pushTokensTable.token, token));
+      }
     }
   } catch (err) {
     logger.error({ err, token }, "Expo push request failed");

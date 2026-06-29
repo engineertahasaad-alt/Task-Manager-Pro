@@ -125,7 +125,14 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
 
-  const { data: notifications, isLoading, refetch } = useListNotifications();
+  const { data: notifications, isLoading, refetch } = useListNotifications({
+    query: {
+      queryKey: getListNotificationsQueryKey(),
+      refetchInterval: 15_000,
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: true,
+    },
+  });
   const { mutate: markRead } = useMarkNotificationRead();
   const { mutate: markAllRead } = useMarkAllNotificationsRead();
 
