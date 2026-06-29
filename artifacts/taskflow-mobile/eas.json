@@ -5,7 +5,6 @@
   },
   "build": {
     "development": {
-      "config": "build.yml",
       "developmentClient": true,
       "distribution": "internal",
       "env": {
@@ -13,7 +12,6 @@
       }
     },
     "preview": {
-      "config": "build.yml",
       "distribution": "internal",
       "channel": "preview",
       "android": {
@@ -28,7 +26,6 @@
       }
     },
     "production": {
-      "config": "build.yml",
       "autoIncrement": true,
       "channel": "production",
       "android": {
