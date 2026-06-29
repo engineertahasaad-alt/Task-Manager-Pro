@@ -24,3 +24,23 @@ that only resolves while the workspace tab is open, which is why installed APKs 
 `EXPO_PUBLIC_DOMAIN`. For anything users install, the fallback must be the permanent
 deployed backend domain. The mobile app talks to the api-server, which mounts routes at
 `/api` and is the externalPort-80 service, so it lives at the root of the deployment domain.
+
+## Publishing an OTA update reliably from this workspace
+
+`eas update --channel <ch>` is the OTA path (no APK rebuild). Two non-obvious blockers:
+
+- **eas-cli version:** the nix-provided `eas-cli` (14.x) silently fails/exits with a
+  0-byte log when bundling an SDK 54 project — the project pins `cli.version >= 16.0.0`
+  for this reason. Use a satisfying CLI via `npx --yes eas-cli@latest update ...`.
+- **Process lifetime:** the export+upload takes ~3–5 min. The bash tool caps at 120s
+  (foreground times out and the job dies), and detached background jobs proved
+  unreliable here. Run it as a **managed workflow** (`configureWorkflow`, outputType
+  "console", no waitForPort, autoStart) so it isn't reaped; monitor via the log file,
+  then `removeWorkflow` when `OTA_EXIT=0`. Verify with
+  `eas channel:view preview --json` (expect non-empty `updateGroups`). `EXPO_TOKEN`
+  secret must be set; runtimeVersion policy is `sdkVersion` (`exposdk:54.0.0`).
+
+**Dev vs prod DB:** development and the deployed app use SEPARATE databases (the
+runtime-managed `DATABASE_URL` resolves differently per environment). A row created by
+hitting the deployed backend is NOT visible in the dev DB, and `executeSql`
+`environment: "production"` is read-only — you cannot delete prod rows via tooling.
