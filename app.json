@@ -2,7 +2,7 @@
   "expo": {
     "name": "Taskaya",
     "slug": "taskaya",
-    "owner": "tahaabdelglels-team",
+    "owner": "tahaabdelglel",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./artifacts/taskflow-mobile/assets/images/icon.png",
@@ -72,7 +72,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "2b44f66a-688d-4069-b7ef-19d994560f09"
+        "projectId": "9cd97945-9f95-42c1-94dd-56bb125939c3"
       }
     }
   }
