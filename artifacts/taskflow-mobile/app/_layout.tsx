@@ -13,7 +13,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppState, Platform } from "react-native";
-import { setBaseUrl, setAuthTokenGetter, useListNotifications } from "@workspace/api-client-react";
+import Constants from "expo-constants";
+import { setBaseUrl, setAuthTokenGetter, useListNotifications, getListNotificationsQueryKey } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth, getCurrentToken } from "@/context/AuthContext";
 import { OfflineProvider } from "@/context/OfflineContext";
@@ -80,7 +81,7 @@ function AppBadgeSync() {
     if (Platform.OS === "web" || !isAuthenticated) return;
     const sub = AppState.addEventListener("change", (state) => {
       if (state === "active") {
-        queryClient.invalidateQueries({ queryKey: ["listNotifications"] });
+        queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
       }
     });
     return () => sub.remove();
@@ -144,6 +145,16 @@ function PushSetup() {
         }),
       });
 
+      // Android requires a notification channel for heads-up notifications to display
+      if (Platform.OS === "android") {
+        await Notifications.setNotificationChannelAsync("default", {
+          name: "Default",
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: "#4F6EF7",
+        });
+      }
+
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
       if (existingStatus !== "granted") {
@@ -152,7 +163,12 @@ function PushSetup() {
       }
       if (finalStatus !== "granted") return;
 
-      const tokenData = await Notifications.getExpoPushTokenAsync();
+      const projectId =
+        Constants.expoConfig?.extra?.eas?.projectId ??
+        (Constants as any).easConfig?.projectId;
+      const tokenData = await Notifications.getExpoPushTokenAsync(
+        projectId ? { projectId } : undefined
+      );
       const token = tokenData.data;
       const domain = API_DOMAIN;
       const authToken = getCurrentToken();

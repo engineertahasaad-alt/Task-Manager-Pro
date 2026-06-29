@@ -77,7 +77,7 @@ export function useNotifications(enabled = true) {
           try {
             const browserNotif = new Notification("Taskaya", {
               body: n.message,
-              icon: "/favicon.svg",
+              icon: "/logo.png",
               tag: `taskaya-notif-${n.id}`,
             });
             if (n.taskId) {

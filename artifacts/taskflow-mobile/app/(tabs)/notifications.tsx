@@ -8,7 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { useListNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@workspace/api-client-react';
+import { useListNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, getListNotificationsQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useColors } from '@/hooks/useColors';
 import { GroupBadge } from '@/components/GroupBadge';
@@ -134,13 +134,13 @@ export default function NotificationsScreen() {
 
   function handleMarkRead(id: number) {
     markRead({ id }, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['listNotifications'] }),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() }),
     });
   }
 
   function handleMarkAllRead() {
     markAllRead(undefined, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['listNotifications'] }),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() }),
     });
   }
 

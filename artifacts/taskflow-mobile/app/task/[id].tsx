@@ -451,8 +451,8 @@ export default function TaskDetailScreen() {
   const [reassignLoading, setReassignLoading] = useState(false);
 
   const taskId = Number(id);
-  const { data: task, isLoading, refetch } = useGetTask({ id: taskId });
-  const { data: messages, refetch: refetchMessages } = useListMessages({ id: taskId });
+  const { data: task, isLoading, refetch } = useGetTask(taskId);
+  const { data: messages, refetch: refetchMessages } = useListMessages(taskId);
   const { data: users } = useListUsers();
   const { mutateAsync: complete } = useCompleteTask();
   const { mutateAsync: approve } = useApproveTask();

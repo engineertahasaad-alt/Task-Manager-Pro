@@ -69,6 +69,7 @@ async function sendExpoPush(token: string, title: string, body: string, taskId?:
     data: taskId ? { taskId } : {},
     sound: "default" as const,
     priority: "high" as const,
+    channelId: "default",
   };
 
   try {
