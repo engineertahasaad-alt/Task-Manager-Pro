@@ -13,7 +13,7 @@ Symptom: the Taskaya Android app shows no system notification at all — no soun
 **How to fix (requires the user's Google/Firebase account):**
 1. Create a Firebase project + Android app with package `com.taskaya.app`; download `google-services.json` into `artifacts/taskflow-mobile/`.
 2. Add `"googleServicesFile": "./google-services.json"` to `expo.android` in `app.json`. (Do NOT add this reference before the file exists — `eas build` fails with ENOENT. It does NOT affect `eas update`.)
-3. Upload the FCM **V1** service-account key to EAS (`eas credentials` → Android → Push notifications) so Expo's servers can call FCM.
+3. Upload the FCM **V1** service-account key to EAS so Expo's servers can call FCM. The `eas credentials` CLI only does this via an interactive arrow-key menu (no non-interactive flag), and mis-navigating it risks the build keystore. Safer: do it via the EAS GraphQL API (`https://api.expo.dev/graphql`, `Authorization: Bearer $EXPO_TOKEN`) — query `app.byFullName(@owner/slug){ id ownerAccount{id} androidAppCredentials(filter:{applicationIdentifier}){ id googleServiceAccountKeyForFcmV1{id} } }`, then `createGoogleServiceAccountKey(googleServiceAccountKeyInput:{jsonKey:<full SA json object>}, accountId)` → `setGoogleServiceAccountKeyForFcmV1(id:<androidAppCredentialsId>, googleServiceAccountKeyId:<keyId>)`. EAS projectId == the App node id. Build the request body with `jq --slurpfile` so the private key never hits stdout, and delete the SA json from the repo afterward (it is NOT gitignored).
 4. Run a NEW build (`eas build -p android --profile preview`) and install it. Only then will tokens register and system notifications arrive.
 
 ## EAS build-credits blocker (account-level, not code)
