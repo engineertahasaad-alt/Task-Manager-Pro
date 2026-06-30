@@ -63,17 +63,12 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
+    hmr: { overlay: false },
     fs: {
       strict: true,
       allow: [
         path.resolve(import.meta.dirname, "../.."),
       ],
-    },
-    proxy: {
-      "/api": {
-        target: "http://localhost:8080",
-        changeOrigin: true,
-      },
     },
   },
   preview: {

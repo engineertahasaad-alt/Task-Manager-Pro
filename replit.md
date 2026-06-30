@@ -25,7 +25,7 @@ A team task management PWA/mobile app that replaces WhatsApp/phone-call task ass
 ## Where things live
 
 - `lib/api-spec/openapi.yaml` — OpenAPI spec (source of truth)
-- `lib/db/src/schema/` — Drizzle table definitions (users, tasks, attachments, messages, notifications)
+- `lib/db/src/schema/` — Drizzle table definitions (users, teams, group_memberships, tasks, task_assignees, task_delegations, attachments, messages, notifications, push_tokens, webauthn_credentials, audit_logs)
 - `artifacts/api-server/src/routes/` — Express route handlers (auth, users, tasks, attachments, messages, notifications, dashboard, reports)
 - `artifacts/api-server/src/middlewares/auth.ts` — JWT auth middleware + role helpers
 - `artifacts/api-server/uploads/` — Uploaded file storage (local)
@@ -57,7 +57,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 - Default password for new team members is `123` — they must change it on first login
 - Seed owner credentials: mobile `0501234567`, password `owner123`
 - All other seeded users: mobile is their number, password is `123` (must change on first login)
-- `pnpm --filter @workspace/db run push-force` if schema push fails with column conflicts
+- `drizzle-kit push` requires a TTY for interactive column conflict resolution — it fails in non-interactive shells. Use raw SQL (`executeSql` in the code_execution sandbox) to apply schema changes manually when needed. `artifacts/api-server/src/migrate.ts` runs idempotent SQL migrations at every server startup, so it is the authoritative migration source.
+- `pnpm --filter @workspace/db run push-force` if schema push fails with column conflicts (only works in a TTY terminal)
 
 ## Pointers
 
