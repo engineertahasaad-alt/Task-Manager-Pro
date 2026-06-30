@@ -10,7 +10,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useChangePassword } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { KeyRound, LogOut, User, Users, Copy, Check, ShieldCheck, UserPlus } from "lucide-react";
+import { KeyRound, LogOut, User, Users, Copy, Check, ShieldCheck, UserPlus, Moon, Sun } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 
@@ -34,6 +35,7 @@ export default function Settings() {
   const [copied, setCopied] = useState(false);
   const isOwner = user?.role === "owner";
   const [joinSuccess, setJoinSuccess] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const joinGroupMutation = useMutation({
     mutationFn: async (values: z.infer<typeof joinGroupSchema>) => {
@@ -141,6 +143,33 @@ export default function Settings() {
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {theme === "dark" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+              Appearance
+            </CardTitle>
+            <CardDescription>Switch between light and dark mode.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <button
+              onClick={toggleTheme}
+              className="flex items-center gap-3 w-full rounded-lg border px-4 py-3 text-left transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-center justify-center h-9 w-9 rounded-full bg-muted shrink-0">
+                {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">{theme === "dark" ? "Dark mode" : "Light mode"}</p>
+                <p className="text-xs text-muted-foreground">Click to switch to {theme === "dark" ? "light" : "dark"} mode</p>
+              </div>
+              <div className={`relative h-5 w-9 rounded-full transition-colors ${theme === "dark" ? "bg-primary" : "bg-muted-foreground/30"}`}>
+                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${theme === "dark" ? "translate-x-4" : "translate-x-0.5"}`} />
+              </div>
+            </button>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

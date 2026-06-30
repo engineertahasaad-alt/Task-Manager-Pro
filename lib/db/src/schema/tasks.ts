@@ -21,6 +21,7 @@ export const tasksTable = pgTable("tasks", {
   reminder1hSent: boolean("reminder_1h_sent").notNull().default(false),
   reminder10mSent: boolean("reminder_10m_sent").notNull().default(false),
   overdueReminderSent: boolean("overdue_reminder_sent").notNull().default(false),
+  priority: text("priority", { enum: ["low", "medium", "high", "critical"] }).notNull().default("medium"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

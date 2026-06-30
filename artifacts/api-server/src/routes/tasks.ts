@@ -177,6 +177,7 @@ async function serializeTask(task: typeof tasksTable.$inferSelect, includeRelati
     attachments,
     messageCount,
     createdAt: task.createdAt.toISOString(),
+    priority: (task as any).priority ?? "medium",
     updatedAt: task.updatedAt.toISOString(),
   };
 }
@@ -325,6 +326,9 @@ router.post("/tasks", requireAuth, requireRole("owner", "deputy"), async (req, r
     return;
   }
 
+  const rawPriority = (req.body as any).priority;
+  const priority = ["low", "medium", "high", "critical"].includes(rawPriority) ? rawPriority : "medium";
+
   const [task] = await db
     .insert(tasksTable)
     .values({
@@ -334,6 +338,7 @@ router.post("/tasks", requireAuth, requireRole("owner", "deputy"), async (req, r
       teamId: req.user!.groupId,
       deadline: new Date(deadline),
       status: "open",
+      priority,
     })
     .returning();
 
