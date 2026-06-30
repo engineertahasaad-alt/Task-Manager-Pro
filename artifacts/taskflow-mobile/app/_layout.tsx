@@ -64,7 +64,7 @@ function AppBadgeSync() {
     query: {
       queryKey: getListNotificationsQueryKey(),
       enabled: isAuthenticated && Platform.OS !== "web",
-      refetchInterval: 20_000,
+      refetchInterval: 3000,
     },
   });
 
@@ -159,11 +159,13 @@ function PushSetup() {
 
       // Android requires a notification channel for heads-up notifications to display
       if (Platform.OS === "android") {
-        await Notifications.setNotificationChannelAsync("default", {
-          name: "Default",
+        await Notifications.setNotificationChannelAsync("taskaya", {
+          name: "Taskaya Notifications",
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 250, 250, 250],
           lightColor: "#4F6EF7",
+          sound: "notification.wav",
+          enableVibrate: true,
         });
       }
 

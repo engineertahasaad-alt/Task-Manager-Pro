@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, notificationsTable, tasksTable, usersTable } from "@workspace/db";
-import { eq, and, or, isNull } from "drizzle-orm";
+import { eq, and, or, isNull, desc } from "drizzle-orm";
 import { MarkNotificationReadParams } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 
@@ -23,7 +23,7 @@ router.get("/notifications", requireAuth, async (req, res): Promise<void> => {
           : isNull(notificationsTable.taskId)
       )
     )
-    .orderBy(notificationsTable.createdAt);
+    .orderBy(desc(notificationsTable.createdAt));
 
   res.json(
     rows.map(({ n }) => ({

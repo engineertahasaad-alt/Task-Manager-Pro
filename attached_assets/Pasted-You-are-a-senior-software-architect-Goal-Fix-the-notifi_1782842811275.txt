@@ -1,0 +1,176 @@
+You are a senior software architect.
+
+Goal:
+Fix the notification and task workflow issues from the root cause WITHOUT breaking any existing feature, UI, API, database schema, or business logic.
+
+IMPORTANT RULES:
+
+* Do NOT rewrite or refactor unrelated code.
+* Do NOT introduce new libraries unless absolutely necessary.
+* Minimize token usage.
+* Analyze first, then patch only the affected modules.
+* Keep backward compatibility.
+* Preserve all existing functionality.
+
+=========================
+ISSUE 1 - Task Reassignment Workflow
+====================================
+
+Current bug:
+
+1. User requests task reassignment.
+2. Manager receives the notification too late.
+3. Manager rejects the request.
+4. User's task screen becomes stuck.
+5. Only "Request Reassignment" button remains.
+6. Normal task actions disappear:
+
+   * Mark as Done
+   * Start
+   * Pause
+   * Resume
+   * Continue
+   * Any action allowed before reassignment request.
+
+Expected behavior:
+
+A reassignment request is only a temporary request.
+
+If manager rejects:
+
+* Restore the task to exactly the previous active state.
+* Restore every action button according to task status.
+* User should continue working normally.
+* No UI dead-end.
+
+If manager approves:
+
+* Transfer ownership correctly.
+* Update permissions.
+* Refresh task state for both users.
+* Remove old owner's action buttons.
+* New owner receives correct actions.
+
+Verify every transition.
+
+=========================
+ISSUE 2 - Notification Delay
+============================
+
+Notifications should be delivered immediately.
+
+Trace the entire notification flow:
+
+Trigger
+→ Backend event
+→ Database
+→ WebSocket / Push
+→ Client listener
+→ UI update
+
+Locate the delay.
+
+Fix only the root cause.
+
+Do not use polling if realtime already exists.
+
+If websocket reconnect is missing,
+fix it.
+
+If event emission is delayed,
+fix it.
+
+If notification queue is blocking,
+fix it.
+
+=========================
+ISSUE 3 - Message Notifications
+===============================
+
+Chat/messages currently do not behave like important notifications.
+
+Every new message must trigger:
+
+* Instant popup
+* Notification sound
+* Notification badge
+* Notification counter
+* Lock screen notification
+* Background notification
+* Foreground notification
+* Tap opens the conversation directly
+
+No duplicated notifications.
+
+No missed notifications.
+
+=========================
+ISSUE 4 - Notification Ordering
+===============================
+
+Notification page must always display:
+
+Newest
+↓
+
+Oldest
+
+Sort using creation timestamp.
+
+No client-side random ordering.
+
+=========================
+ISSUE 5 - Notification Sound
+============================
+
+Replace the default Android notification sound with a custom application sound.
+
+Requirements:
+
+* Pleasant
+* Modern
+* Short
+* Premium
+* Similar feeling to the Replit task completed notification
+* Distinct but not annoying
+* Around 300–700 ms
+* Works on Android and iOS
+* Plays for:
+
+  * New message
+  * New task
+  * Approval
+  * Rejection
+  * Mention
+  * Important alerts
+
+If the platform supports notification channels, configure them correctly so the custom sound is actually used.
+
+=========================
+VALIDATION
+==========
+
+Before finishing, verify:
+
+✓ Reassignment approve flow
+✓ Reassignment reject flow
+✓ All task action buttons
+✓ Instant notifications
+✓ Message notifications
+✓ Background notifications
+✓ Foreground notifications
+✓ Notification ordering
+✓ Notification sound
+✓ No duplicated notifications
+✓ No broken APIs
+✓ No UI regression
+✓ No database regression
+
+Finally provide ONLY:
+
+1. Root causes found.
+2. Files modified.
+3. What was fixed.
+4. Remaining risks (if any).
+
+Do NOT modify anything unrelated to these issues.

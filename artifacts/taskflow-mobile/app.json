@@ -53,7 +53,7 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#4F6EF7",
-          "sounds": [],
+          "sounds": ["./assets/sounds/notification.wav"],
           "mode": "production"
         }
       ]

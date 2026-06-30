@@ -42,7 +42,7 @@ export function playNotificationSound() {
 
 export function useNotifications(enabled = true) {
   const { data: notifications } = useListNotifications({
-    query: { refetchInterval: enabled ? 15000 : false, enabled },
+    query: { refetchInterval: enabled ? 3000 : false, enabled },
   });
 
   const unreadCount = notifications?.filter((n) => !n.isRead).length ?? 0;

@@ -128,7 +128,7 @@ export default function NotificationsScreen() {
   const { data: notifications, isLoading, refetch } = useListNotifications({
     query: {
       queryKey: getListNotificationsQueryKey(),
-      refetchInterval: 15_000,
+      refetchInterval: 3000,
       refetchOnMount: 'always',
       refetchOnWindowFocus: true,
     },

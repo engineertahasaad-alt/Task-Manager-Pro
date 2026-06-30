@@ -4,6 +4,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { ListMessagesParams, SendMessageParams, SendMessageBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { serializeUser } from "./auth";
+import { sendPushToUser } from "../lib/pushNotifications";
 
 const router = Router();
 
@@ -106,12 +107,14 @@ router.post("/tasks/:id/messages", requireAuth, async (req, res): Promise<void> 
       .where(eq(taskAssigneesTable.taskId, task.id));
     for (const row of assigneeRows) {
       if (row.userId !== senderAuth.id) {
+        const notifMsg = `${senderAuth.fullName} sent you a message on task: "${task.title}"`;
         await db.insert(notificationsTable).values({
           userId: row.userId,
           type: "task_assigned",
-          message: `${senderAuth.fullName} sent you a message on task: "${task.title}"`,
+          message: notifMsg,
           taskId: task.id,
         });
+        await sendPushToUser(row.userId, "New Message", notifMsg, task.id);
       }
     }
   } else {
@@ -129,12 +132,14 @@ router.post("/tasks/:id/messages", requireAuth, async (req, res): Promise<void> 
         );
       for (const mem of managerMemberships) {
         if (mem.userId !== senderAuth.id) {
+          const notifMsg = `${senderAuth.fullName} replied on task: "${task.title}"`;
           await db.insert(notificationsTable).values({
             userId: mem.userId,
             type: "task_assigned",
-            message: `${senderAuth.fullName} replied on task: "${task.title}"`,
+            message: notifMsg,
             taskId: task.id,
           });
+          await sendPushToUser(mem.userId, "New Message", notifMsg, task.id);
         }
       }
     }

@@ -478,8 +478,12 @@ export default function TaskDetailScreen() {
     (status === 'open' || status === 'reopened') &&
     reassignStatus !== 'pending';
 
+  const currentAssigneeIds = new Set<number>([
+    ...(taskAssignees?.map((a: any) => a.id) ?? []),
+    ...(task?.assigneeId ? [task.assigneeId] : []),
+  ]);
   const otherUsers = (users ?? []).filter(
-    (u: any) => u.id !== task?.assigneeId && u.id !== user?.id
+    (u: any) => !currentAssigneeIds.has(u.id) && u.id !== user?.id
   );
 
   async function handleAction(action: 'complete' | 'approve' | 'reopen') {
