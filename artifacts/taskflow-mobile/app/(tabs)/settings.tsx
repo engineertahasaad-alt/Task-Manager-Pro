@@ -85,7 +85,7 @@ export default function SettingsScreen() {
     },
   });
 
-  const { data: notifPrefs } = useGetNotificationPreferences({ query: { enabled: !!user && Platform.OS !== 'web' } });
+  const { data: notifPrefs } = useGetNotificationPreferences({ query: { enabled: !!user && Platform.OS !== 'web' } as any });
   const [prefs, setPrefs] = useState({ reminder24h: true, reminder1h: true, reminder10m: true, overdue: true });
 
   useEffect(() => {

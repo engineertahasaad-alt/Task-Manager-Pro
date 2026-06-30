@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Bell, CheckCircle2, Inbox, MessageSquare, CheckSquare, RotateCcw, ThumbsUp, UserCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useLocation } from "wouter";
-import { useMarkAllRead } from "@workspace/api-client-react";
 
 const TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string }> = {
   task_assigned:   { icon: Bell,          color: "text-blue-600",   bg: "bg-blue-100" },

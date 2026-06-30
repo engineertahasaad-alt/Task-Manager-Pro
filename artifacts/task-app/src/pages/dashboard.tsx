@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   useGetMe, useGetDashboardSummary, useGetMyTasks,
   useGetWorkloadByEmployee, useListTasks, useListUsers,
+  GetDashboardSummaryDateFilter, GetWorkloadByEmployeeDateFilter,
 } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,9 +68,16 @@ function ManagerDashboard() {
   const { data: users } = useListUsers();
 
   const filterBase = {
-    dateFilter: dateFilter !== "all" ? dateFilter : undefined,
+    dateFilter: dateFilter !== "all"
+      ? dateFilter as GetDashboardSummaryDateFilter
+      : undefined,
     startDate: dateFilter === "custom" ? startDate || undefined : undefined,
     endDate: dateFilter === "custom" ? endDate || undefined : undefined,
+  };
+
+  const workloadFilter = {
+    ...filterBase,
+    dateFilter: filterBase.dateFilter as GetWorkloadByEmployeeDateFilter | undefined,
   };
 
   const { data: summary, isLoading } = useGetDashboardSummary({
@@ -77,7 +85,7 @@ function ManagerDashboard() {
     assigneeId,
   });
 
-  const { data: workload } = useGetWorkloadByEmployee(filterBase);
+  const { data: workload } = useGetWorkloadByEmployee(workloadFilter);
 
   const approved = summary?.approved ?? 0;
   const open = summary?.open ?? 0;

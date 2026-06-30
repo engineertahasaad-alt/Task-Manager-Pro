@@ -6,7 +6,7 @@ import { sendPushToUser } from "../lib/pushNotifications";
 import { LoginBody, ChangePasswordBody, SignupBody, ForgotPasswordBody } from "@workspace/api-zod";
 import { signToken, requireAuth } from "../middlewares/auth";
 import { randomBytes } from "crypto";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { logAudit } from "../lib/audit";
 
 const router = Router();

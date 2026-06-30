@@ -79,9 +79,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   {"badge" in item && <NotificationBadge count={item.badge ?? 0} />}
                 </span>
                 {item.label}
-                {"badge" in item && item.badge > 0 && (
+                {"badge" in item && (item.badge ?? 0) > 0 && (
                   <span className="ml-auto h-5 min-w-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
-                    {item.badge > 99 ? "99+" : item.badge}
+                    {(item.badge ?? 0) > 99 ? "99+" : item.badge}
                   </span>
                 )}
               </Link>
@@ -144,9 +144,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         <item.icon className="h-5 w-5" />
                       </span>
                       {item.label}
-                      {"badge" in item && item.badge > 0 && (
+                      {"badge" in item && (item.badge ?? 0) > 0 && (
                         <span className="ml-auto h-5 min-w-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
-                          {item.badge > 99 ? "99+" : item.badge}
+                          {(item.badge ?? 0) > 99 ? "99+" : item.badge}
                         </span>
                       )}
                     </Link>

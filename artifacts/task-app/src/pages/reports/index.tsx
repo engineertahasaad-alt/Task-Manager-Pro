@@ -36,11 +36,11 @@ export default function Reports() {
   const { data: users } = useListUsers();
   const { data: dailyReport, isLoading: dailyLoading } = useGetDailyReport(
     { date: dailyDate },
-    { query: { enabled: reportType === "daily" && !!dailyDate } }
+    { query: { enabled: reportType === "daily" && !!dailyDate } as any }
   );
   const { data: employeeReport, isLoading: employeeLoading } = useGetEmployeeReport(
     { employeeId: parseInt(employeeId), startDate, endDate },
-    { query: { enabled: reportType === "employee" && !!employeeId && !!startDate && !!endDate } }
+    { query: { enabled: reportType === "employee" && !!employeeId && !!startDate && !!endDate } as any }
   );
 
   const reportData = reportType === "daily" ? dailyReport : employeeReport;

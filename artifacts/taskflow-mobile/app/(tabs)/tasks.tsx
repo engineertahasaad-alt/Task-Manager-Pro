@@ -52,8 +52,8 @@ export default function TasksScreen() {
   const { data: tasks, isLoading, refetch, isError } = useListTasks(
     isDelegatedFilter
       ? ({ delegated: true } as any)
-      : (selectedFilter && selectedFilter !== 'delegated' ? { status: selectedFilter as Status } : {}),
-    { query: { enabled: isOnline } }
+      : (selectedFilter ? { status: selectedFilter } : {}),
+    { query: { enabled: isOnline } as any }
   );
 
   const pendingReassignments = isManager && isOnline

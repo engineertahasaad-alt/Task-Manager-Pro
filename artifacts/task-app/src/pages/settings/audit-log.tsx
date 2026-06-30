@@ -114,7 +114,7 @@ export default function AuditLog() {
   const [draft, setDraft] = useState<Filters>(EMPTY_FILTERS);
   const [applied, setApplied] = useState<Filters>(EMPTY_FILTERS);
 
-  const { data: users } = useListUsers({ query: { enabled: !!user && user.role !== "member" } });
+  const { data: users } = useListUsers({ query: { enabled: !!user && user.role !== "member" } as any });
 
   if (user && user.role === "member") {
     return <Redirect to="/settings" />;

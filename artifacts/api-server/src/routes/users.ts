@@ -320,7 +320,7 @@ router.get("/team/join-requests", requireAuth, requireRole("owner", "deputy"), a
 });
 
 router.post("/team/join-requests/:id/approve", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const groupId = req.user!.groupId;
   if (!groupId) { res.status(400).json({ error: "No active group" }); return; }
@@ -351,7 +351,7 @@ router.post("/team/join-requests/:id/approve", requireAuth, requireRole("owner",
 });
 
 router.post("/team/join-requests/:id/reject", requireAuth, requireRole("owner", "deputy"), async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const groupId = req.user!.groupId;
   if (!groupId) { res.status(400).json({ error: "No active group" }); return; }

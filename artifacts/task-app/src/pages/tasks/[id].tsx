@@ -387,8 +387,8 @@ export default function TaskDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
 
   const { data: user } = useGetMe();
-  const { data: task, isLoading } = useGetTask(taskId, { query: { enabled: !!taskId } });
-  const { data: messages } = useListMessages(taskId, { query: { enabled: !!taskId, refetchInterval: 3000 } });
+  const { data: task, isLoading } = useGetTask(taskId, { query: { enabled: !!taskId } as any });
+  const { data: messages } = useListMessages(taskId, { query: { enabled: !!taskId, refetchInterval: 3000 } as any });
 
   const completeMutation = useCompleteTask();
   const approveMutation = useApproveTask();

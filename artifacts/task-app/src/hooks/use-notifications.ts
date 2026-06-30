@@ -52,7 +52,7 @@ export function useNotifications(enabled = true) {
 
   // 30 s fallback polling keeps things in sync if SSE is interrupted.
   const { data: notifications } = useListNotifications({
-    query: { refetchInterval: enabled ? 30_000 : false, enabled },
+    query: { refetchInterval: enabled ? 30_000 : false, enabled } as any,
   });
 
   // Invalidate notification list whenever the SSE stream delivers a message.

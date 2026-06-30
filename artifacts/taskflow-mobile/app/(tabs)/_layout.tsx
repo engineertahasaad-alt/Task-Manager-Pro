@@ -22,7 +22,7 @@ function NotifBadge() {
 function ReassignBadge() {
   const { user } = useAuth();
   const isManager = user?.role === 'owner' || user?.role === 'deputy';
-  const { data: tasks } = useListTasks({}, { query: { enabled: isManager } });
+  const { data: tasks } = useListTasks({}, { query: { enabled: isManager } as any });
   const pendingCount = isManager
     ? (tasks?.filter(t => t.reassignStatus === 'pending').length ?? 0)
     : 0;

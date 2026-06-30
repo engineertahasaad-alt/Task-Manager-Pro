@@ -111,15 +111,15 @@ export default function DashboardScreen() {
   const isManager = user?.role === 'owner' || user?.role === 'deputy';
 
   const { data: myTasks, isLoading: myTasksLoading, refetch: refetchMyTasks } = useGetMyTasks(
-    { query: { enabled: !isManager } }
+    { query: { enabled: !isManager } as any }
   );
   const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useGetDashboardSummary(
     {},
-    { query: { enabled: isManager } }
+    { query: { enabled: isManager } as any }
   );
   const { data: workload, refetch: refetchWorkload } = useGetWorkloadByEmployee(
     {},
-    { query: { enabled: isManager } }
+    { query: { enabled: isManager } as any }
   );
 
   const isLoading = isManager ? summaryLoading : myTasksLoading;

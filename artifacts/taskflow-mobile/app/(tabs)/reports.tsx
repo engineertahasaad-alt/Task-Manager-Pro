@@ -63,11 +63,11 @@ export default function ReportsScreen() {
 
   const { data: dailyReport, isLoading: dailyLoading } = useGetDailyReport(
     { date: dailyDate },
-    { query: { enabled: tab === 'daily' && !!dailyDate } }
+    { query: { enabled: tab === 'daily' && !!dailyDate } as any }
   );
   const { data: employeeReport, isLoading: empLoading } = useGetEmployeeReport(
     { employeeId: employeeId!, startDate, endDate },
-    { query: { enabled: tab === 'employee' && !!employeeId && !!startDate && !!endDate } }
+    { query: { enabled: tab === 'employee' && !!employeeId && !!startDate && !!endDate } as any }
   );
 
   const report = tab === 'daily' ? dailyReport : employeeReport;

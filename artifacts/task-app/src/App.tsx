@@ -22,7 +22,7 @@ import AuditLog from "@/pages/settings/audit-log";
 const queryClient = new QueryClient();
 
 function PrivateRoute({ component: Component, ...rest }: any) {
-  const { data: user, isLoading, isError } = useGetMe({ query: { retry: false } });
+  const { data: user, isLoading, isError } = useGetMe({ query: { retry: false } as any });
 
   if (isLoading) return <div className="flex h-screen items-center justify-center">Loading...</div>;
   if (isError || !user) return <Redirect to="/login" />;
