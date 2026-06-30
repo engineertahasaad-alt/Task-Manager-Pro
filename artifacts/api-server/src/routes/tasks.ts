@@ -16,6 +16,7 @@ import { requireAuth, requireRole } from "../middlewares/auth";
 import { serializeUser } from "./auth";
 import { sendPushToUser } from "../lib/pushNotifications";
 import { loadOwnedTask } from "../lib/groupOwnership";
+import { pushNotificationToUser } from "../lib/sseManager";
 
 const router = Router();
 
@@ -187,6 +188,7 @@ async function createNotification(
   taskId: number
 ) {
   await db.insert(notificationsTable).values({ userId, type, message, taskId });
+  pushNotificationToUser(userId);
 }
 
 /** Load a task that belongs to the requester's active group. Returns null if not found or wrong group. */

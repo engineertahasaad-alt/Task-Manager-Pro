@@ -2,7 +2,9 @@ import { Router } from "express";
 import { db, notificationsTable, tasksTable, usersTable } from "@workspace/db";
 import { eq, and, or, isNull, desc } from "drizzle-orm";
 import { MarkNotificationReadParams } from "@workspace/api-zod";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, JWT_SECRET } from "../middlewares/auth";
+import jwt from "jsonwebtoken";
+import { addSseConnection, removeSseConnection } from "../lib/sseManager";
 
 const router = Router();
 
@@ -126,6 +128,41 @@ router.put("/notifications/preferences", requireAuth, async (req, res): Promise<
     .where(eq(usersTable.id, req.user!.id));
 
   res.json({ reminder24h, reminder1h, reminder10m, overdue });
+});
+
+router.get("/notifications/stream", async (req, res): Promise<void> => {
+  const token = typeof req.query.token === "string" ? req.query.token : null;
+  if (!token) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  let userId: number;
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { userId: number };
+    userId = payload.userId;
+  } catch {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  addSseConnection(userId, res);
+  res.write(": connected\n\n");
+
+  const heartbeat = setInterval(() => {
+    try { res.write(": heartbeat\n\n"); } catch { /* client gone */ }
+  }, 25_000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    removeSseConnection(userId, res);
+  });
 });
 
 export default router;

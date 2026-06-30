@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { useListNotifications } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useListNotifications, getListNotificationsQueryKey } from "@workspace/api-client-react";
 
 let sharedAudioCtx: AudioContext | null = null;
 
@@ -41,13 +42,34 @@ export function playNotificationSound() {
 }
 
 export function useNotifications(enabled = true) {
+  const queryClient = useQueryClient();
+
+  // 30s fallback polling — SSE handles instant updates
   const { data: notifications } = useListNotifications({
-    query: { refetchInterval: enabled ? 3000 : false, enabled },
+    query: { refetchInterval: enabled ? 30_000 : false, enabled },
   });
 
   const unreadCount = notifications?.filter((n) => !n.isRead).length ?? 0;
   const initializedRef = useRef(false);
   const prevIdsRef = useRef<Set<number>>(new Set());
+
+  // SSE connection for instant in-browser notifications
+  useEffect(() => {
+    if (!enabled) return;
+    const token = localStorage.getItem("taskaya_token");
+    if (!token) return;
+
+    const url = `/api/notifications/stream?token=${encodeURIComponent(token)}`;
+    const es = new EventSource(url);
+
+    es.onmessage = () => {
+      queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
+    };
+
+    // EventSource auto-reconnects on error — no manual handling needed
+
+    return () => es.close();
+  }, [enabled, queryClient]);
 
   useEffect(() => {
     if (!enabled) return;

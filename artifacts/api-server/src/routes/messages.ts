@@ -5,6 +5,7 @@ import { ListMessagesParams, SendMessageParams, SendMessageBody } from "@workspa
 import { requireAuth } from "../middlewares/auth";
 import { serializeUser } from "./auth";
 import { sendPushToUser } from "../lib/pushNotifications";
+import { pushNotificationToUser } from "../lib/sseManager";
 
 const router = Router();
 
@@ -114,6 +115,7 @@ router.post("/tasks/:id/messages", requireAuth, async (req, res): Promise<void> 
           message: notifMsg,
           taskId: task.id,
         });
+        pushNotificationToUser(row.userId);
         await sendPushToUser(row.userId, "New Message", notifMsg, task.id);
       }
     }
@@ -139,6 +141,7 @@ router.post("/tasks/:id/messages", requireAuth, async (req, res): Promise<void> 
             message: notifMsg,
             taskId: task.id,
           });
+          pushNotificationToUser(mem.userId);
           await sendPushToUser(mem.userId, "New Message", notifMsg, task.id);
         }
       }
