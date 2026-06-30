@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useListNotifications, getListNotificationsQueryKey } from "@workspace/api-client-react";
+import { useSSE } from "./use-sse";
 
 let sharedAudioCtx: AudioContext | null = null;
 
@@ -44,33 +45,34 @@ export function playNotificationSound() {
 export function useNotifications(enabled = true) {
   const queryClient = useQueryClient();
 
-  // 30s fallback polling — SSE handles instant updates
+  // Read token once — SSE hook re-connects whenever it changes.
+  const token = typeof window !== "undefined"
+    ? localStorage.getItem("taskaya_token")
+    : null;
+
+  // 30 s fallback polling keeps things in sync if SSE is interrupted.
   const { data: notifications } = useListNotifications({
     query: { refetchInterval: enabled ? 30_000 : false, enabled },
+  });
+
+  // Invalidate notification list whenever the SSE stream delivers a message.
+  const handleSSEMessage = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
+  }, [queryClient]);
+
+  // Custom XHR-based SSE — works in both web and React Native.
+  useSSE({
+    url: "/api/notifications/stream",
+    token: enabled ? token : null,
+    onMessage: handleSSEMessage,
+    enabled,
   });
 
   const unreadCount = notifications?.filter((n) => !n.isRead).length ?? 0;
   const initializedRef = useRef(false);
   const prevIdsRef = useRef<Set<number>>(new Set());
 
-  // SSE connection for instant in-browser notifications
-  useEffect(() => {
-    if (!enabled) return;
-    const token = localStorage.getItem("taskaya_token");
-    if (!token) return;
-
-    const url = `/api/notifications/stream?token=${encodeURIComponent(token)}`;
-    const es = new EventSource(url);
-
-    es.onmessage = () => {
-      queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
-    };
-
-    // EventSource auto-reconnects on error — no manual handling needed
-
-    return () => es.close();
-  }, [enabled, queryClient]);
-
+  // Request browser notification permission once on mount.
   useEffect(() => {
     if (!enabled) return;
     if ("Notification" in window && Notification.permission === "default") {
@@ -78,6 +80,7 @@ export function useNotifications(enabled = true) {
     }
   }, [enabled]);
 
+  // Detect newly-arrived unread notifications and alert the user.
   useEffect(() => {
     if (!enabled || notifications === undefined) return;
 
