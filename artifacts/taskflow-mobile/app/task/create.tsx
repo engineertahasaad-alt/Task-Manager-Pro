@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, Platform, Alert,
+  ScrollView, ActivityIndicator, Platform,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,15 @@ import { useListUsers, useCreateTask } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useColors } from '@/hooks/useColors';
 import { DatePickerButton } from '@/components/DatePickerButton';
+
+type Priority = 'low' | 'medium' | 'high' | 'critical';
+
+const PRIORITY_OPTIONS: { value: Priority; label: string; color: string }[] = [
+  { value: 'low',      label: 'Low',      color: '#64748B' },
+  { value: 'medium',   label: 'Medium',   color: '#D97706' },
+  { value: 'high',     label: 'High',     color: '#EA580C' },
+  { value: 'critical', label: 'Critical', color: '#EF4444' },
+];
 
 export default function CreateTaskScreen() {
   const colors = useColors();
@@ -23,6 +32,7 @@ export default function CreateTaskScreen() {
   const [description, setDescription] = useState('');
   const [deadline, setDeadline] = useState('');
   const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
+  const [priority, setPriority] = useState<Priority>('medium');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -50,6 +60,7 @@ export default function CreateTaskScreen() {
           description: description.trim(),
           deadline: deadlineDate.toISOString(),
           assigneeIds,
+          priority,
         } as any
       });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -108,6 +119,39 @@ export default function CreateTaskScreen() {
             multiline
             numberOfLines={3}
           />
+        </View>
+
+        {/* Priority selector */}
+        <View style={styles.field}>
+          <Text style={[styles.label, { color: colors.foreground }]}>Priority</Text>
+          <View style={styles.priorityRow}>
+            {PRIORITY_OPTIONS.map(opt => {
+              const isSelected = priority === opt.value;
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.priorityChip,
+                    {
+                      borderColor: isSelected ? opt.color : colors.border,
+                      backgroundColor: isSelected ? opt.color + '18' : colors.card,
+                      flex: 1,
+                    },
+                  ]}
+                  onPress={() => setPriority(opt.value)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.priorityDot, { backgroundColor: opt.color }]} />
+                  <Text style={[
+                    styles.priorityLabel,
+                    { color: isSelected ? opt.color : colors.mutedForeground },
+                  ]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         <View style={styles.field}>
@@ -189,6 +233,13 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, fontWeight: '500' as const, fontFamily: 'Inter_500Medium' },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, height: 46, fontSize: 15, fontFamily: 'Inter_400Regular' },
   textarea: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, minHeight: 80, fontSize: 15, fontFamily: 'Inter_400Regular', textAlignVertical: 'top' },
+  priorityRow: { flexDirection: 'row', gap: 8 },
+  priorityChip: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 5, paddingVertical: 9, borderRadius: 10, borderWidth: 1.5,
+  },
+  priorityDot: { width: 7, height: 7, borderRadius: 4 },
+  priorityLabel: { fontSize: 12, fontWeight: '600' as const, fontFamily: 'Inter_600SemiBold' },
   assigneeList: { borderWidth: 1, borderRadius: 12, overflow: 'hidden' },
   assigneeRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderBottomWidth: 1 },
   avatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },

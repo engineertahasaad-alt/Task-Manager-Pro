@@ -15,6 +15,7 @@ import { GroupBadge } from '@/components/GroupBadge';
 
 type Status = 'open' | 'completed' | 'approved' | 'reopened';
 type FilterValue = Status | null | 'delegated';
+type PriorityFilter = 'all' | 'critical' | 'high' | 'medium' | 'low';
 
 const FILTERS: { label: string; value: FilterValue; icon?: string }[] = [
   { label: 'All', value: null },
@@ -29,6 +30,14 @@ const MANAGER_FILTERS: { label: string; value: FilterValue; icon?: string }[] = 
   { label: 'Delegated', value: 'delegated', icon: 'share-2' },
 ];
 
+const PRIORITY_FILTERS: { label: string; value: PriorityFilter; color: string }[] = [
+  { label: 'All',      value: 'all',      color: '#64748B' },
+  { label: 'Critical', value: 'critical', color: '#EF4444' },
+  { label: 'High',     value: 'high',     color: '#EA580C' },
+  { label: 'Medium',   value: 'medium',   color: '#D97706' },
+  { label: 'Low',      value: 'low',      color: '#64748B' },
+];
+
 export default function TasksScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -36,6 +45,7 @@ export default function TasksScreen() {
   const { isOnline, cachedTasks, mergeCachedTasks } = useOffline();
   const params = useLocalSearchParams<{ initialFilter?: string }>();
   const [selectedFilter, setSelectedFilter] = useState<FilterValue>(null);
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
   const isManager = user?.role === 'owner' || user?.role === 'deputy';
 
   useEffect(() => {
@@ -66,11 +76,14 @@ export default function TasksScreen() {
     }
   }, [tasks, selectedFilter]);
 
-  const displayTasks = isOnline ? tasks : (cachedTasks ?? []);
+  const allTasks = isOnline ? tasks : (cachedTasks ?? []);
   const showingCached = !isOnline && !!cachedTasks;
 
-  const topPadding = Platform.OS === 'web' ? 67 : insets.top + 16;
+  const displayTasks = (allTasks ?? []).filter((t: any) =>
+    priorityFilter === 'all' || (t.priority ?? 'medium') === priorityFilter
+  );
 
+  const topPadding = Platform.OS === 'web' ? 67 : insets.top + 16;
   const filtersToShow = isManager ? MANAGER_FILTERS : FILTERS;
 
   return (
@@ -99,6 +112,7 @@ export default function TasksScreen() {
         </View>
       </View>
 
+      {/* Status filter */}
       <View style={[styles.filterBar, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <FlatList
           horizontal
@@ -111,7 +125,10 @@ export default function TasksScreen() {
               style={[
                 styles.filterChip,
                 { borderColor: colors.border, backgroundColor: colors.card },
-                selectedFilter === item.value && { backgroundColor: item.value === 'delegated' ? '#8B5CF6' : colors.primary, borderColor: item.value === 'delegated' ? '#8B5CF6' : colors.primary },
+                selectedFilter === item.value && {
+                  backgroundColor: item.value === 'delegated' ? '#8B5CF6' : colors.primary,
+                  borderColor: item.value === 'delegated' ? '#8B5CF6' : colors.primary,
+                },
               ]}
               onPress={() => setSelectedFilter(item.value)}
             >
@@ -132,6 +149,42 @@ export default function TasksScreen() {
               </Text>
             </TouchableOpacity>
           )}
+        />
+      </View>
+
+      {/* Priority filter */}
+      <View style={[styles.priorityBar, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <FlatList
+          horizontal
+          data={PRIORITY_FILTERS}
+          keyExtractor={item => item.value}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterList}
+          renderItem={({ item }) => {
+            const isActive = priorityFilter === item.value;
+            return (
+              <TouchableOpacity
+                style={[
+                  styles.priorityChip,
+                  {
+                    borderColor: isActive ? item.color : colors.border,
+                    backgroundColor: isActive ? item.color + '18' : colors.card,
+                  },
+                ]}
+                onPress={() => setPriorityFilter(item.value)}
+              >
+                {item.value !== 'all' && (
+                  <View style={[styles.priorityDot, { backgroundColor: item.color }]} />
+                )}
+                <Text style={[
+                  styles.filterText,
+                  { color: isActive ? item.color : colors.mutedForeground },
+                ]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
         />
       </View>
 
@@ -171,7 +224,7 @@ export default function TasksScreen() {
         </View>
       ) : (
         <FlatList
-          data={(displayTasks ?? []) as any[]}
+          data={displayTasks as any[]}
           keyExtractor={item => String(item.id)}
           contentContainerStyle={[
             styles.list,
@@ -225,7 +278,9 @@ export default function TasksScreen() {
                 {isOnline
                   ? isDelegatedFilter
                     ? "You haven't delegated any tasks to other groups yet."
-                    : (selectedFilter ? `No ${selectedFilter} tasks found` : 'No tasks assigned yet')
+                    : priorityFilter !== 'all'
+                      ? `No ${priorityFilter} priority tasks`
+                      : (selectedFilter ? `No ${selectedFilter} tasks found` : 'No tasks assigned yet')
                   : 'No cached tasks available'}
               </Text>
             </View>
@@ -252,10 +307,18 @@ const styles = StyleSheet.create({
   cachedText: { fontSize: 11, fontFamily: 'Inter_500Medium', fontWeight: '500' as const },
   createBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   filterBar: { paddingVertical: 10, borderBottomWidth: 1 },
+  priorityBar: { paddingVertical: 8, borderBottomWidth: 1 },
   filterList: { paddingHorizontal: 16, gap: 8 },
   filterChip: {
     paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1,
     flexDirection: 'row', alignItems: 'center',
+  },
+  priorityChip: {
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+  },
+  priorityDot: {
+    width: 6, height: 6, borderRadius: 3,
   },
   filterText: { fontSize: 13, fontWeight: '500' as const, fontFamily: 'Inter_500Medium' },
   delegatedBanner: {

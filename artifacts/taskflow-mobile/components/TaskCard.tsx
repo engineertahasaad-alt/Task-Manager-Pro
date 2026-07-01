@@ -14,6 +14,7 @@ interface Task {
   description: string;
   status: 'open' | 'completed' | 'approved' | 'reopened';
   deadline: string;
+  priority?: string;
   assignee?: AssigneeUser | null;
   assignees?: AssigneeUser[] | null;
   creator?: { id: number; fullName: string } | null;
@@ -26,10 +27,17 @@ interface TaskCardProps {
 }
 
 const STATUS_CONFIG = {
-  open: { label: 'Open', icon: 'circle' as const, color: '#3B82F6' },
+  open:      { label: 'Open',      icon: 'circle' as const,      color: '#3B82F6' },
   completed: { label: 'Completed', icon: 'check-circle' as const, color: '#22C55E' },
-  approved: { label: 'Approved', icon: 'check-circle' as const, color: '#8B5CF6' },
-  reopened: { label: 'Reopened', icon: 'refresh-cw' as const, color: '#F59E0B' },
+  approved:  { label: 'Approved',  icon: 'check-circle' as const, color: '#8B5CF6' },
+  reopened:  { label: 'Reopened',  icon: 'refresh-cw' as const,   color: '#F59E0B' },
+};
+
+const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
+  low:      { label: 'Low',      color: '#64748B' },
+  medium:   { label: 'Medium',   color: '#D97706' },
+  high:     { label: 'High',     color: '#EA580C' },
+  critical: { label: 'Critical', color: '#EF4444' },
 };
 
 function formatDeadline(deadline: string) {
@@ -91,6 +99,7 @@ export function TaskCard({ task, onPress }: TaskCardProps) {
   const colors = useColors();
   const statusConfig = STATUS_CONFIG[task.status];
   const deadline = formatDeadline(task.deadline);
+  const priorityCfg = PRIORITY_CONFIG[task.priority ?? 'medium'] ?? PRIORITY_CONFIG.medium;
 
   return (
     <TouchableOpacity
@@ -103,6 +112,11 @@ export function TaskCard({ task, onPress }: TaskCardProps) {
           <Feather name={statusConfig.icon} size={11} color={statusConfig.color} />
           <Text style={[styles.statusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
         </View>
+
+        <View style={[styles.priorityBadge, { backgroundColor: priorityCfg.color + '18' }]}>
+          <Text style={[styles.priorityText, { color: priorityCfg.color }]}>{priorityCfg.label}</Text>
+        </View>
+
         <View style={[styles.deadlineBadge, {
           backgroundColor: deadline.overdue ? '#EF4444' + '18' : colors.muted,
         }]}>
@@ -155,8 +169,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     marginBottom: 10,
+    flexWrap: 'wrap',
   },
   statusBadge: {
     flexDirection: 'row',
@@ -171,6 +186,16 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     fontFamily: 'Inter_600SemiBold',
   },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  priorityText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    fontFamily: 'Inter_600SemiBold',
+  },
   deadlineBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -178,6 +203,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
+    marginLeft: 'auto',
   },
   deadlineText: {
     fontSize: 11,
