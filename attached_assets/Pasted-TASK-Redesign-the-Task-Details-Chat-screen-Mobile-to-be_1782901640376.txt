@@ -1,0 +1,229 @@
+TASK: Redesign the Task Details + Chat screen (Mobile) to behave like WhatsApp
+
+I want you to redesign this screen from the ground up. Do NOT apply small fixes. Refactor the entire layout and scrolling behavior.
+
+Goal
+
+The screen should feel almost identical to WhatsApp chat in terms of usability while keeping Taskaya branding.
+
+The task information becomes a fixed header, while the conversation behaves exactly like a messaging app.
+
+1. Fix the message composer
+
+Currently the message input is partially hidden behind Android navigation buttons.
+
+This is unacceptable.
+
+Requirements:
+
+Respect Safe Area Insets.
+Respect keyboard height.
+Respect Android gesture/navigation bar.
+Input must NEVER overlap the system navigation bar.
+When keyboard opens:
+input stays attached to keyboard.
+messages resize correctly.
+nothing is hidden.
+Bottom padding must be dynamic.
+
+Use proper KeyboardAvoiding behavior and Safe Area handling instead of hardcoded margins.
+
+2. Split the screen into two independent sections
+
+The page should consist of:
+
+====================
+
+Fixed Task Header
+
+====================
+
+Contains:
+
+Task Number
+Status Badge
+Assignee
+Created By
+Deadline
+Request Reassign button
+Any future action buttons
+
+This section NEVER scrolls away.
+
+No matter how many chat messages exist...
+
+This entire section always remains visible.
+
+Exactly like a pinned conversation header.
+
+Scrollable Chat Window
+
+====================
+
+Below the header create an independent chat container.
+
+Only this section scrolls.
+
+The header never moves.
+
+The message composer also stays fixed at the bottom.
+
+The scrolling area exists only between:
+
+Header
+
+↓
+
+Messages
+
+↓
+
+Input Bar
+
+3. Chat experience
+
+The chat must feel like WhatsApp.
+
+Requirements:
+
+• Messages aligned left/right depending on sender.
+
+• Smooth scrolling.
+
+• Auto-scroll to latest message.
+
+• Comfortable spacing.
+
+• Rounded message bubbles.
+
+• Proper timestamps.
+
+• Maximum bubble width around 75%.
+
+• Long messages wrap correctly.
+
+• No clipping.
+
+• No excessive white space.
+
+• Nice bubble padding.
+
+• Smooth animations when sending.
+
+4. Input Bar
+
+Redesign completely.
+
+Should resemble WhatsApp.
+
+Include:
+
+Rounded text field
+
+Send button
+
+Optional attachment button placeholder
+
+Proper shadow
+
+Correct height
+
+Large touch targets
+
+The input must always remain visible.
+
+5. Layout behavior
+
+The screen should behave like:
+
+Task Header (Fixed)
+
+Task Number
+
+Status
+
+Assignee
+
+Deadline
+
+Buttons
+
+Messages (Scrollable Only)
+
+Message...
+
+Message...
+
+Message...
+
+Message...
+
+Input Bar (Fixed)
+
+Type message...
+
+Send
+
+At no point should the header disappear.
+
+At no point should the input disappear.
+
+Only messages scroll.
+
+6. Performance
+
+Use virtualized list (FlatList/FlashList).
+
+Do NOT use nested ScrollViews.
+
+Avoid unnecessary re-renders.
+
+Maintain scroll position.
+
+7. Responsive
+
+Must work correctly on:
+
+Android
+
+iPhone
+
+Small phones
+
+Large phones
+
+Tablets
+
+Landscape
+
+Portrait
+
+8. UX Quality
+
+I want this screen to feel like a premium production messaging application.
+
+The experience should be comparable to WhatsApp, Telegram, or Slack.
+
+No overlapping.
+
+No jitter.
+
+No layout jumps.
+
+No keyboard glitches.
+
+No hidden controls.
+
+Everything should feel polished and professional.
+
+9. Deliverables
+
+After implementing:
+
+Explain exactly what was changed.
+Explain why each change was necessary.
+Mention any files/components that were modified.
+Verify there are no layout regressions elsewhere in the app.
+Ensure the solution follows React Native best practices and is maintainable.
+
+Do not patch the existing UI. Refactor the screen architecture if needed to achieve this behavior.
