@@ -517,6 +517,8 @@ router.patch("/tasks/:id", requireAuth, requireRole("owner", "deputy"), async (r
   if (parsed.data.title) updateData.title = parsed.data.title;
   if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
   if (parsed.data.deadline) updateData.deadline = new Date(parsed.data.deadline);
+  const rawPatchPriority = (req.body as any).priority;
+  if (["low", "medium", "high", "critical"].includes(rawPatchPriority)) updateData.priority = rawPatchPriority;
 
   const newAssigneeIds = resolveAssigneeIds(parsed.data as any);
 

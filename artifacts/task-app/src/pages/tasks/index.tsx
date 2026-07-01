@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useListTasks, useGetMe } from "@workspace/api-client-react";
 import { AppLayout } from "@/components/layout";
@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Filter, Clock, Share2, ChevronRight } from "lucide-react";
-import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Search, Filter, Clock, Share2, ChevronRight, CalendarDays, List, ChevronLeft } from "lucide-react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, getDay } from "date-fns";
 
 function AssigneeAvatars({ assignees, assignee }: { assignees?: any[]; assignee?: any }) {
   const list = assignees && assignees.length > 0 ? assignees : (assignee ? [assignee] : []);
@@ -43,15 +44,104 @@ const STATUS_COLOR: Record<string, string> = {
   reopened: 'bg-orange-100 text-orange-800 border-orange-200',
 };
 
+const PRIORITY_CONFIG: Record<string, { label: string; className: string }> = {
+  low:      { label: "Low",      className: "bg-slate-100 text-slate-700 border-slate-200" },
+  medium:   { label: "Medium",   className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+  high:     { label: "High",     className: "bg-orange-100 text-orange-800 border-orange-200" },
+  critical: { label: "Critical", className: "bg-red-100 text-red-800 border-red-200" },
+};
+
+function PriorityBadge({ priority }: { priority?: string }) {
+  const cfg = PRIORITY_CONFIG[priority ?? "medium"] ?? PRIORITY_CONFIG.medium;
+  return (
+    <Badge variant="outline" className={cfg.className + " text-[10px] px-1.5 py-0 font-semibold"}>
+      {cfg.label}
+    </Badge>
+  );
+}
+
 type TabValue = "all" | "open" | "completed" | "approved" | "reopened" | "delegated";
+type ViewMode = "list" | "calendar";
+
+function CalendarView({ tasks }: { tasks: any[] }) {
+  const [calMonth, setCalMonth] = useState(new Date());
+  const monthStart = startOfMonth(calMonth);
+  const monthEnd = endOfMonth(calMonth);
+  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const startPad = getDay(monthStart);
+
+  const tasksByDay = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    for (const task of tasks) {
+      const key = format(new Date(task.deadline), "yyyy-MM-dd");
+      if (!map[key]) map[key] = [];
+      map[key].push(task);
+    }
+    return map;
+  }, [tasks]);
+
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <button onClick={() => setCalMonth(m => subMonths(m, 1))} className="p-1.5 rounded hover:bg-muted">
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <h2 className="font-semibold text-base">{format(calMonth, "MMMM yyyy")}</h2>
+        <button onClick={() => setCalMonth(m => addMonths(m, 1))} className="p-1.5 rounded hover:bg-muted">
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="border rounded-xl overflow-hidden">
+        <div className="grid grid-cols-7 bg-muted/50">
+          {dayNames.map(d => (
+            <div key={d} className="text-center text-xs font-medium text-muted-foreground py-2">{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 divide-x divide-y border-t">
+          {Array.from({ length: startPad }).map((_, i) => (
+            <div key={`pad-${i}`} className="min-h-[72px] bg-muted/20 p-1" />
+          ))}
+          {days.map(day => {
+            const key = format(day, "yyyy-MM-dd");
+            const dayTasks = tasksByDay[key] ?? [];
+            const isToday = isSameDay(day, new Date());
+            return (
+              <div key={key} className={`min-h-[72px] p-1 ${isToday ? "bg-primary/5" : ""}`}>
+                <p className={`text-xs font-medium mb-1 w-5 h-5 flex items-center justify-center rounded-full ${isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
+                  {format(day, "d")}
+                </p>
+                <div className="space-y-0.5">
+                  {dayTasks.slice(0, 3).map((task: any) => (
+                    <Link key={task.id} href={`/tasks/${task.id}`}>
+                      <div className={`text-[10px] leading-tight px-1 py-0.5 rounded truncate cursor-pointer hover:opacity-80 ${STATUS_COLOR[task.status] ?? "bg-gray-100 text-gray-800"}`}>
+                        {task.title}
+                      </div>
+                    </Link>
+                  ))}
+                  {dayTasks.length > 3 && (
+                    <div className="text-[10px] text-muted-foreground px-1">+{dayTasks.length - 3} more</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Tasks() {
   const [tab, setTab] = useState<TabValue>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const { data: user } = useGetMe();
   const isManager = user?.role === 'owner' || user?.role === 'deputy';
-
   const isDelegatedTab = tab === "delegated";
 
   const { data: tasks, isLoading } = useListTasks(
@@ -60,10 +150,14 @@ export default function Tasks() {
       : (tab !== "all" ? { status: tab as any } : {})
   );
 
-  const filteredTasks = tasks?.filter(task =>
-    task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    task.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredTasks = tasks?.filter(task => {
+    const matchesSearch =
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesPriority =
+      priorityFilter === "all" || (task as any).priority === priorityFilter;
+    return matchesSearch && matchesPriority;
+  });
 
   return (
     <AppLayout>
@@ -73,16 +167,34 @@ export default function Tasks() {
             <h1 className="text-2xl font-bold tracking-tight">Tasks</h1>
             <p className="text-muted-foreground">Manage and track your team's work.</p>
           </div>
-          {isManager && (
-            <Link href="/tasks/new">
-              <Button className="w-full sm:w-auto">
-                <Plus className="mr-2 h-4 w-4" /> New Task
-              </Button>
-            </Link>
-          )}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center border rounded-lg overflow-hidden">
+              <button
+                onClick={() => setViewMode("list")}
+                className={`p-2 transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                title="List view"
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("calendar")}
+                className={`p-2 transition-colors ${viewMode === "calendar" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                title="Calendar view"
+              >
+                <CalendarDays className="h-4 w-4" />
+              </button>
+            </div>
+            {isManager && (
+              <Link href="/tasks/new">
+                <Button className="w-full sm:w-auto">
+                  <Plus className="mr-2 h-4 w-4" /> New Task
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
           <Tabs value={tab} onValueChange={v => setTab(v as TabValue)} className="w-full sm:w-auto">
             <TabsList className={`w-full sm:w-auto grid h-auto ${isManager ? "grid-cols-6" : "grid-cols-5"}`}>
               <TabsTrigger value="all" className="text-xs sm:text-sm py-2">All</TabsTrigger>
@@ -98,15 +210,30 @@ export default function Tasks() {
             </TabsList>
           </Tabs>
 
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-            <Input
-              type="search"
-              placeholder="Search tasks..."
-              className="pl-9 w-full"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className="w-[130px] shrink-0">
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All priorities</SelectItem>
+                <SelectItem value="critical">Critical</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="relative flex-1 sm:max-w-xs">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <Input
+                type="search"
+                placeholder="Search tasks..."
+                className="pl-9 w-full"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
         </div>
 
@@ -120,19 +247,21 @@ export default function Tasks() {
         {isLoading ? (
           <div className="text-center py-12 text-muted-foreground">Loading tasks...</div>
         ) : filteredTasks?.length === 0 ? (
-          <div className="text-center py-16 border rounded-lg bg-gray-50/50">
+          <div className="text-center py-16 border rounded-lg bg-gray-50/50 dark:bg-gray-900/20">
             <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
               {isDelegatedTab ? <Share2 className="h-6 w-6 text-gray-400" /> : <Filter className="h-6 w-6 text-gray-400" />}
             </div>
-            <h3 className="text-lg font-medium text-gray-900">
+            <h3 className="text-lg font-medium">
               {isDelegatedTab ? "No delegated tasks" : "No tasks found"}
             </h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               {isDelegatedTab
                 ? "You haven't delegated any tasks to other groups yet."
                 : "Try adjusting your filters or search query."}
             </p>
           </div>
+        ) : viewMode === "calendar" ? (
+          <CalendarView tasks={filteredTasks ?? []} />
         ) : (
           <div className="grid gap-4">
             {filteredTasks?.map(task => {
@@ -142,6 +271,7 @@ export default function Tasks() {
               const delegatedDone = hasDelegated
                 ? delegatedTasks.filter((d: any) => d.status === 'approved' || d.status === 'completed').length
                 : 0;
+              const priority = (task as any).priority ?? "medium";
 
               return (
                 <Link key={task.id} href={`/tasks/${task.id}`}>
@@ -154,6 +284,7 @@ export default function Tasks() {
                             <Badge variant="outline" className={STATUS_COLOR[task.status] ?? "bg-gray-100 text-gray-800"}>
                               {task.status.toUpperCase()}
                             </Badge>
+                            <PriorityBadge priority={priority} />
                             {isOverdue && (
                               <Badge variant="destructive" className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" /> Overdue
@@ -165,7 +296,7 @@ export default function Tasks() {
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600 line-clamp-2">{task.description}</p>
+                          <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
                           {hasDelegated && isDelegatedTab && (
                             <div className="mt-2 space-y-1">
                               {delegatedTasks.slice(0, 3).map((dt: any) => (
@@ -184,7 +315,7 @@ export default function Tasks() {
                           )}
                         </div>
 
-                        <div className="flex flex-col items-start sm:items-end text-sm text-gray-500 gap-2 sm:min-w-[160px]">
+                        <div className="flex flex-col items-start sm:items-end text-sm text-muted-foreground gap-2 sm:min-w-[160px]">
                           <div className="flex items-center gap-1.5">
                             <Clock className="h-3.5 w-3.5" />
                             {format(new Date(task.deadline), "MMM d, yyyy")}

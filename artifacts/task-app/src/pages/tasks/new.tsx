@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppLayout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
-import { Check, X } from "lucide-react";
+import { Check } from "lucide-react";
 
 const taskSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -20,7 +21,15 @@ const taskSchema = z.object({
   assigneeIds: z.array(z.number()).min(1, "At least one assignee is required"),
   deadlineDate: z.string().min(1, "Deadline date is required"),
   deadlineTime: z.string().min(1, "Deadline time is required"),
+  priority: z.enum(["low", "medium", "high", "critical"]),
 });
+
+const PRIORITY_OPTIONS = [
+  { value: "low",      label: "Low",      color: "text-slate-600" },
+  { value: "medium",   label: "Medium",   color: "text-yellow-700" },
+  { value: "high",     label: "High",     color: "text-orange-700" },
+  { value: "critical", label: "Critical", color: "text-red-700" },
+];
 
 export default function NewTask() {
   const [, setLocation] = useLocation();
@@ -31,7 +40,14 @@ export default function NewTask() {
 
   const form = useForm<z.infer<typeof taskSchema>>({
     resolver: zodResolver(taskSchema),
-    defaultValues: { title: "", description: "", assigneeIds: [], deadlineDate: format(new Date(), "yyyy-MM-dd"), deadlineTime: "17:00" },
+    defaultValues: {
+      title: "",
+      description: "",
+      assigneeIds: [],
+      deadlineDate: format(new Date(), "yyyy-MM-dd"),
+      deadlineTime: "17:00",
+      priority: "medium",
+    },
   });
 
   const uploadFile = async (taskId: number, file: File) => {
@@ -51,13 +67,13 @@ export default function NewTask() {
 
   const onSubmit = (values: z.infer<typeof taskSchema>) => {
     const deadline = new Date(`${values.deadlineDate}T${values.deadlineTime}`).toISOString();
-    
     createTaskMutation.mutate({
       data: {
         title: values.title,
         description: values.description,
         assigneeIds: values.assigneeIds,
         deadline,
+        priority: values.priority,
       } as any
     }, {
       onSuccess: async (task) => {
@@ -74,9 +90,7 @@ export default function NewTask() {
   };
 
   const toggleAssignee = (userId: number, current: number[]) => {
-    if (current.includes(userId)) {
-      return current.filter(id => id !== userId);
-    }
+    if (current.includes(userId)) return current.filter(id => id !== userId);
     return [...current, userId];
   };
 
@@ -101,10 +115,34 @@ export default function NewTask() {
                     <FormMessage />
                   </FormItem>
                 )} />
+
                 <FormField control={form.control} name="description" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Description</FormLabel>
-                    <FormControl><Textarea placeholder="Detailed task description..." className="min-h-[120px]" {...field} /></FormControl>
+                    <FormControl>
+                      <Textarea placeholder="Detailed task description..." className="min-h-[120px]" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+
+                <FormField control={form.control} name="priority" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Priority</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select priority" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PRIORITY_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            <span className={opt.color + " font-medium"}>{opt.label}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -126,7 +164,7 @@ export default function NewTask() {
                             <button
                               key={u.id}
                               type="button"
-                              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 ${isSelected ? 'bg-indigo-50' : ''}`}
+                              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 ${isSelected ? 'bg-indigo-50 dark:bg-indigo-950/40' : ''}`}
                               onClick={() => field.onChange(toggleAssignee(u.id, field.value))}
                             >
                               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${isSelected ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'}`}>
